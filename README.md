@@ -1,79 +1,171 @@
-| Supported Targets | ESP32-S3 |
-| ----------------- | -------- |
+# 🔥 triptalabs-heat-controller
 
-| Supported LCD Controller    | ST7701 |
-| ----------------------------| -------|
+**Controlador inteligente para horno de vacío**, desarrollado por Tripta Labs, diseñado sobre ESP32-S3 con interfaz táctil y firmware escrito en C usando **ESP-IDF**. Este sistema permite el control térmico preciso mediante PID, lectura de sensores industriales, y actualización remota del firmware.
 
-| Supported Touch Controller  |  GT911 |
-| ----------------------------| -------|
+---
 
-# RGB Avoid Tearing Example
+## 🧪 Descripción general
 
-[esp_lcd](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/lcd.html) provides several panel drivers out-of box, e.g. ST7789, SSD1306, NT35510. However, there're a lot of other panels on the market, it's beyond `esp_lcd` component's responsibility to include them all.
+Este proyecto controla un horno de vacío a través de una interfaz táctil implementada con **LVGL**, y cuenta con soporte para:
 
-`esp_lcd` allows user to add their own panel drivers in the project scope (i.e. panel driver can live outside of esp-idf), so that the upper layer code like LVGL porting code can be reused without any modifications, as long as user-implemented panel driver follows the interface defined in the `esp_lcd` component.
+* Control de temperatura con PID.
+* Lectura precisa de temperatura con sensor **PT100** conectado vía **RS485** usando módulo PT21A01.
+* Salida a **relé de estado sólido (SSR)** para activar la resistencia.
+* Gráfica de temperatura en tiempo real.
+* Temporizador de ciclo térmico.
+* Conectividad **Wi-Fi** y **Bluetooth** para futuras integraciones con apps móviles.
+* Actualización OTA del firmware directamente desde GitHub (sin particiones OTA).
 
-This example demonstrates how to avoid tearing when using LVGL with RGB interface screens in an esp-idf project. The example will use the LVGL library to draw a stylish music player.
+---
 
-This example uses the [esp_timer](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_timer.html) to generate the ticks needed by LVGL and uses a dedicated task to run the `lv_timer_handler()`. Since the LVGL APIs are not thread-safe, this example uses a mutex which be invoked before the call of `lv_timer_handler()` and released after it. The same mutex needs to be used in other tasks and threads around every LVGL (lv_...) related function call and code. For more porting guides, please refer to [LVGL porting doc](https://docs.lvgl.io/master/porting/index.html).
+## 🖥️ Soporte de hardware (Placa de desarrollo waveshare)
 
-## How to use the example
+* **Supported Targets:** ESP32-S3
+* **Supported LCD Controller:** ST7701
+* **Supported Touch Controller:** GT911
 
-## ESP-IDF Required
+---
 
-### Hardware Required
+## 🎯 Hardware utilizado
 
-* An ESP32-S3R8 development board
-* A ST7701 LCD panel, with RGB interface
-* An USB cable for power supply and programming
+| Componente            | Descripción                                            |
+| --------------------- | ------------------------------------------------------ |
+| ESP32-S3              | Módulo con Wi-Fi + Bluetooth, doble núcleo             |
+| Pantalla táctil       | Waveshare 5” 1024x600 con FT5436 controlador I2C       |
+| Sensor de temperatura | PT100 RTD                                              |
+| Interfaz RS485        | Módulo PT21A01-B-MODBUS para lectura digital del PT100 |
+| SSR                   | Relevador de estado sólido (40A, 110V AC)              |
 
-### Hardware Connection
+---
 
-The connection between ESP Board and the LCD is as follows:
+## 🧩 Tecnologías y librerías
+
+* [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/)
+* [LVGL](https://lvgl.io/) (GUI táctil)
+* FreeRTOS
+* Protocolo **Modbus RTU** (implementado manualmente)
+* NVS (Non-Volatile Storage) para persistencia de configuración PID
+* SDMMC (microSD para backups y OTA)
+* HTTP Client + JSON Parser para actualización desde GitHub
+
+---
+
+## 🖥️ Estructura del proyecto
 
 ```
-       ESP Board                           RGB  Panel
-+-----------------------+              +-------------------+
-|                   GND +--------------+GND                |
-|                       |              |                   |
-|                   3V3 +--------------+VCC                |
-|                       |              |                   |
-|                   PCLK+--------------+PCLK               |
-|                       |              |                   |
-|             DATA[15:0]+--------------+DATA[15:0]         |
-|                       |              |                   |
-|                  HSYNC+--------------+HSYNC              |
-|                       |              |                   |
-|                  VSYNC+--------------+VSYNC              |
-|                       |              |                   |
-|                     DE+--------------+DE                 |
-|                       |              |                   |
-|               BK_LIGHT+--------------+BLK                |
-+-----------------------+              |                   |
-                               3V3-----+DISP_EN            |
-                                       |                   |
-                                       +-------------------+
+triptalabs-heat-controller/
+├── main/
+│   ├── CH422G.c/.h
+│   ├── DEV_Config.c/.h
+│   ├── Kconfig.projbuild
+│   ├── lvgl_port.c/.h
+│   ├── main.c
+│   ├── pid_controller.c/.h
+│   ├── sensor.c/.h
+│   ├── ui_chart_data.c/.h
+│   ├── update.c/.h
+│   ├── waveshare_rgb_lcd_port.c
+│   └── ui/
+│       ├── components/
+│       │   ├── ui_comp.c/.h
+│       │   └── ui_comp_statusbar.h
+│       ├── fonts/
+│       ├── images/
+│       ├── screens/
+│       │   ├── ui_DevMode.c
+│       │   ├── ui_ScreenAjustes.c
+│       │   ├── ui_ScreenBootlogo.c
+│       │   ├── ui_ScreenBT.c
+│       │   ├── ui_ScreenEstadisticas.c
+│       │   ├── ui_ScreenHome.c
+│       │   └── ui_ScreenWifi.c
+│       ├── filelist.txt
+│       ├── ui_events.c/.h
+│       ├── ui_helpers.c/.h
+│       └── ui.c/.h
+├── components/
+│   ├── lvgl__lvgl/
+│   └── espressif__esp_lcd_touch/
+├── sdkconfig.defaults
+├── partitions.csv
+├── .gitignore
+├── CMakeLists.txt
+└── README.md
 ```
 
-* The LCD parameters and GPIO number used by this example can be changed in [example_rgb_avoid_tearing.c](main/example_rgb_avoid_tearing.c). Especially, please pay attention to the **vendor specific initialization**, it can be different between manufacturers and should consult the LCD supplier for initialization sequence code.
-* The LVGL parameters can be changed not only through `menuconfig` but also directly in `lvgl_conf.h`
+---
 
-### Configure the Project
+## 🚀 Cómo compilar
 
-Run `idf.py menuconfig` and navigate to `Example Configuration` menu.
+1. Instala el entorno de desarrollo ESP-IDF:
+   [https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/)
 
-### Build and Flash
+2. Clona este repositorio:
 
-Run `idf.py set-target esp32s3` to select the target chip.
+   ```bash
+   git clone https://github.com/triptalabs/triptalabs-heat-controller.git
+   cd triptalabs-heat-controller
+   ```
 
-Run `idf.py -p PORT build flash monitor` to build, flash and monitor the project. A fancy animation will show up on the LCD as expected.
+3. Inicializa el entorno:
 
-The first time you run `idf.py` for the example will cost extra time as the build system needs to address the component dependencies and downloads the missing components from registry into `managed_components` folder.
+   ```bash
+   idf.py set-target esp32s3
+   idf.py menuconfig   # Solo si necesitas modificar la configuración
+   ```
 
-(To exit the serial monitor, type ``Ctrl-]``.)
+4. Compila y flashea:
 
-See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for full steps to configure and use ESP-IDF to build projects.
+   ```bash
+   idf.py build
+   idf.py flash monitor
+   ```
 
-## Troubleshooting
+---
 
-For any technical queries, please open an [issue](https://github.com/espressif/esp-iot-solution/issues) on GitHub. We will get back to you soon.
+## 📡 Actualización OTA
+
+El dispositivo verifica periódicamente si hay una versión nueva disponible en GitHub. Si la encuentra, descarga el nuevo binario a la microSD y lo flashea automáticamente. En caso de fallo, restaura desde un backup local.
+
+---
+
+## 📊 Interfaz táctil
+
+* Diseñada en SquareLine Studio.
+* Control táctil de setpoint, estado del PID, temporizador.
+* Visualización de temperatura actual y gráfica en tiempo real.
+* Configuración accesible de parametros de optimizacion (Kp, Kd, Ki) desde panel DevMode.
+
+---
+
+## ⚠️ Estado del proyecto
+
+> 🧪 En desarrollo activo – ya funcionan:
+>
+> * Controlador PID
+> * Lectura PT100 vía RS485
+> * OTA desde GitHub
+> * Interfaz gráfica básica
+> * Integración lectura sensor + control PID
+> * Watchdog
+
+Próximas mejoras:
+
+* Integración con app móvil
+* Guardado de datos históricos
+
+---
+
+## 🧠 Licencia
+
+Este proyecto es propiedad intelectual de **Tripta Labs S.A.S.**
+Licencia: MIT – uso libre bajo atribución.
+
+---
+
+## ✨ Autor
+
+**Tripta**
+[https://github.com/triptalabs](https://github.com/triptalabs)
+
+---
