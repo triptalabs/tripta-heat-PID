@@ -1,0 +1,44 @@
+# 🧠 ARCHIVOS DE COMPILACIÓN Y CACHÉ
+/build/
+*.elf
+*.map
+*.bin
+*.hex
+*.axf
+*.pyc
+*.pyo
+*.o
+*.a
+*.d
+*.gcda
+*.gcno
+
+# 🔧 ARCHIVOS DE CONFIGURACIÓN GENERADOS
+sdkconfig
+sdkconfig.old
+dependencies.lock
+
+# 💻 CONFIGURACIÓN DE VS CODE
+.vscode/
+*.code-workspace
+
+# 🚫 COSAS QUE NO DEBEN SUBIRSE
+*.log
+*.bak
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# 📦 INTEGRACIÓN CON CACHÉS EXTERNOS
+__pycache__/
+*.tgz
+*.tar.gz
+
+# 🛠️ ESP-IDF TOOLS (opcional si estás usando instalación global)
+.espressif/
+
+# 📂 BACKUPS LOCALES
+*.orig
+*.rej
+*.sublime-workspace
