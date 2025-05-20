@@ -1,3 +1,6 @@
+![Project banner](banner.png)
+
+
 # 🔥 triptalabs-heat-controller
 
 **Controlador inteligente para horno de vacío**, desarrollado por Tripta Labs, diseñado sobre ESP32-S3 con interfaz táctil y firmware escrito en C usando **ESP-IDF**. Este sistema permite el control térmico preciso mediante PID, lectura de sensores industriales, y actualización remota del firmware.
