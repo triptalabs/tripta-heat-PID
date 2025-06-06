@@ -34,7 +34,7 @@ Este proyecto controla un horno de vacío a través de una interfaz táctil impl
 | Componente            | Descripción                                            |
 | --------------------- | ------------------------------------------------------ |
 | ESP32-S3              | Módulo con Wi-Fi + Bluetooth, doble núcleo             |
-| Pantalla táctil       | Waveshare 5” 1024x600 con FT5436 controlador I2C       |
+| Pantalla táctil       | Waveshare 5" 1024x600 con FT5436 controlador I2C       |
 | Sensor de temperatura | PT100 RTD                                              |
 | Interfaz RS485        | Módulo PT21A01-B-MODBUS para lectura digital del PT100 |
 | SSR                   | Relevador de estado sólido (40A, 110V AC)              |
@@ -58,34 +58,44 @@ Este proyecto controla un horno de vacío a través de una interfaz táctil impl
 ```
 triptalabs-heat-controller/
 ├── main/
-│   ├── CH422G.c/.h
-│   ├── DEV_Config.c/.h
-│   ├── Kconfig.projbuild
-│   ├── lvgl_port.c/.h
-│   ├── main.c
-│   ├── pid_controller.c/.h
-│   ├── sensor.c/.h
+│   ├── core/
+│   │   ├── main.c
+│   │   ├── pid_controller.c/.h
+│   │   ├── update.c/.h
+│   │   └── CMakeLists.txt
+│   ├── drivers/
+│   │   ├── config/
+│   │   │   ├── DEV_Config.c/.h
+│   │   │   └── Kconfig.projbuild
+│   │   ├── display/
+│   │   │   ├── CH422G.c/.h
+│   │   │   └── waveshare_rgb_lcd_port.c
+│   │   ├── io/
+│   │   └── sensor/
+│   │       └── sensor.c/.h
+│   ├── ui/
+│   │   ├── components/
+│   │   │   ├── ui_comp.c/.h
+│   │   │   ├── ui_comp_hook.c/.h
+│   │   │   └── ui_comp_statusbar.c/.h
+│   │   ├── fonts/
+│   │   ├── images/
+│   │   ├── screens/
+│   │   │   ├── ui_DevMode.c
+│   │   │   ├── ui_ScreenAjustes.c
+│   │   │   ├── ui_ScreenBootlogo.c
+│   │   │   ├── ui_ScreenBT.c
+│   │   │   ├── ui_ScreenEstadisticas.c
+│   │   │   ├── ui_ScreenHome.c
+│   │   │   └── ui_ScreenWifi.c
+│   │   ├── filelist.txt
+│   │   ├── ui_events.c/.h
+│   │   ├── ui_helpers.c/.h
+│   │   └── ui.c/.h
 │   ├── ui_chart_data.c/.h
-│   ├── update.c/.h
-│   ├── waveshare_rgb_lcd_port.c
-│   └── ui/
-│       ├── components/
-│       │   ├── ui_comp.c/.h
-│       │   └── ui_comp_statusbar.h
-│       ├── fonts/
-│       ├── images/
-│       ├── screens/
-│       │   ├── ui_DevMode.c
-│       │   ├── ui_ScreenAjustes.c
-│       │   ├── ui_ScreenBootlogo.c
-│       │   ├── ui_ScreenBT.c
-│       │   ├── ui_ScreenEstadisticas.c
-│       │   ├── ui_ScreenHome.c
-│       │   └── ui_ScreenWifi.c
-│       ├── filelist.txt
-│       ├── ui_events.c/.h
-│       ├── ui_helpers.c/.h
-│       └── ui.c/.h
+│   ├── lvgl_port.c/.h
+│   ├── CMakeLists.txt
+│   └── idf_component.yml
 ├── components/
 │   ├── lvgl__lvgl/
 │   └── espressif__esp_lcd_touch/
@@ -138,24 +148,33 @@ El dispositivo verifica periódicamente si hay una versión nueva disponible en 
 * Control táctil de setpoint, estado del PID, temporizador.
 * Visualización de temperatura actual y gráfica en tiempo real.
 * Configuración accesible de parametros de optimizacion (Kp, Kd, Ki) desde panel DevMode.
+* Barra de estado con información de conectividad.
+* Pantallas de configuración para WiFi y Bluetooth.
+* Modo de desarrollo para ajustes avanzados.
 
 ---
 
 ## ⚠️ Estado del proyecto
 
-> 🧪 En desarrollo activo – ya funcionan:
+> ✅ Funcionalidades implementadas:
 >
-> * Controlador PID
-> * Lectura PT100 vía RS485
-> * OTA desde GitHub
-> * Interfaz gráfica básica
+> * Controlador PID con ajuste de parámetros
+> * Lectura PT100 vía RS485 con Modbus RTU
+> * OTA desde GitHub con sistema de backup
+> * Interfaz gráfica completa con múltiples pantallas
 > * Integración lectura sensor + control PID
-> * Watchdog
+> * Watchdog y sistema de recuperación
+> * Configuración de WiFi y Bluetooth
+> * Gráfica de temperatura en tiempo real
+> * Temporizador de ciclo térmico
+> * Modo de desarrollo para ajustes avanzados
 
 Próximas mejoras:
 
 * Integración con app móvil
 * Guardado de datos históricos
+* Mejoras en la interfaz de usuario
+* Optimización del control PID
 
 ---
 
