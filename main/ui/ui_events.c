@@ -3,18 +3,24 @@
 // Proyecto: UI_draft
 
 #include "ui.h"
+#include "ui_helpers.h"
+#include "ui_comp.h"
+#include "ui_comp_hook.h"
+#include "ui_events.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "lvgl.h"
-#include "pid_controller.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_bt_device.h"
+#include "esp_err.h"
 #include "update.h"
 #include <math.h>
-#include "esp_bt_device.h"
 #include "driver/gpio.h"
 #include "CH422G.h"
 #include <sys/time.h>
 #include <time.h>
+#include "pid_controller.h"
 
 #define CH422_CMD_SET_PARAM   0x48
 #define CH422_PUSH_PULL_MODE  0x00  // IOs como entrada, OCx como push-pull
@@ -30,6 +36,7 @@ extern lv_obj_t * ui_TextAreaKp;
 extern lv_obj_t * ui_TextAreaKi;
 extern lv_obj_t * ui_TextAreaKd;
 extern lv_obj_t * ui_ArcSetTime;
+extern lv_obj_t * ui_ArcSetTemp;
 extern lv_obj_t * ui_RollerAnio;
 extern lv_obj_t * ui_RollerMes;
 extern lv_obj_t * ui_RollerDia;
@@ -156,13 +163,15 @@ void ApagarTimer(lv_event_t *e) {
     lv_arc_set_value(ui_ArcSetTime, 0);
 }
 
-void CambiarNombreBT(lv_event_t * e) {
-    const char * new_bt_name = lv_textarea_get_text(ui_nombrebt);
+void CambiarNombreBT(lv_event_t *e)
+{
+    const char *new_bt_name = lv_textarea_get_text(ui_nombrebt);
     if (!new_bt_name || strlen(new_bt_name) == 0) {
         ESP_LOGW(EVENTS_TAG, "No se proporcionó un nombre válido para Bluetooth.");
         return;
     }
 
+    // Actualizar el nombre del dispositivo Bluetooth
     esp_err_t ret = esp_bt_dev_set_device_name(new_bt_name);
     if (ret == ESP_OK) {
         ESP_LOGI(EVENTS_TAG, "Nombre Bluetooth actualizado a: %s", new_bt_name);

@@ -13,10 +13,6 @@
 *.gcda
 *.gcno
 
-# 🔧 ARCHIVOS DE CONFIGURACIÓN GENERADOS
-sdkconfig
-sdkconfig.old
-dependencies.lock
 
 # 💻 CONFIGURACIÓN DE VS CODE
 .vscode/

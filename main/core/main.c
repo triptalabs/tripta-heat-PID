@@ -100,10 +100,10 @@ void wifi_stack_init(void) {
     setenv("TZ", "COT5", 1);
     tzset();
 
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_setservername(1, "time.nist.gov");
-    sntp_init();
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_setservername(1, "time.nist.gov");
+    esp_sntp_init();
 
     vTaskDelay(pdMS_TO_TICKS(2000));  // Espera para sincronizar
 

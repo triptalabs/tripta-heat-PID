@@ -5,9 +5,8 @@
 
 #include "../ui.h"
 
-lv_chart_series_t *ui_Chart_series_1 = NULL;
-lv_coord_t ui_Chart_series_1_array[240] = {0};
-
+extern lv_chart_series_t *ui_Chart_series_1;
+extern lv_coord_t ui_Chart_series_1_array[240];
 
 void ui_ScreenHome_screen_init(void)
 {

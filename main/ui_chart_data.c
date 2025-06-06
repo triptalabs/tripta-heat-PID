@@ -17,4 +17,4 @@
 
 lv_coord_t ui_Chart_series_1_array[240];   /**< Buffer de datos para la serie 1 (temperatura) */
 lv_chart_series_t *ui_Chart_series_1;      /**< Puntero a la serie en la gráfica */
-lv_obj_t *ui_Chart;                         /**< Objeto de gráfica en la interfaz LVGL */
+extern lv_obj_t *ui_Chart;                 /**< Objeto de gráfica en la interfaz LVGL */
