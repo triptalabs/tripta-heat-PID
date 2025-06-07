@@ -24,15 +24,54 @@
 #include "pid_controller.h"
 
 // ───────────────────────────────────────────────────────
-// Parámetros predeterminados y configuración
+// Estructura de configuración
 
-static float kp_default = 1.0f;
-static float ki_default = 0.1f;
-static float kd_default = 2.0f;
+typedef struct {
+    // Límites de salida PID
+    float output_max;
+    float output_min;
+    
+    // Tiempo de muestreo
+    uint32_t sample_time_ms;
+    
+    // Parámetros de estabilidad
+    float watchdog_rise;
+    float stable_threshold;
+    uint8_t stable_cycles_for_reset;
+    
+    // Parámetros de autotuning
+    float autotune_hysteresis;
+    float autotune_relay_high;
+    float autotune_relay_low;
+    uint8_t autotune_min_cycles;
+    uint32_t autotune_delay_ms;
+    
+    // Parámetros PID predeterminados
+    float kp_default;
+    float ki_default;
+    float kd_default;
+} PIDConfig_t;
 
-#define PID_OUTPUT_MAX 100.0f
-#define PID_OUTPUT_MIN 0.0f
-#define SAMPLE_TIME_MS 5000
+// Configuración global
+static const PIDConfig_t pid_config = {
+    .output_max = 100.0f,
+    .output_min = 0.0f,
+    .sample_time_ms = 5000,
+    .watchdog_rise = 2.0f,
+    .stable_threshold = 0.5f,
+    .stable_cycles_for_reset = 3,
+    .autotune_hysteresis = 0.5f,
+    .autotune_relay_high = 100.0f,
+    .autotune_relay_low = 0.0f,
+    .autotune_min_cycles = 5,
+    .autotune_delay_ms = 100,
+    .kp_default = 1.0f,
+    .ki_default = 0.1f,
+    .kd_default = 2.0f
+};
+
+// ───────────────────────────────────────────────────────
+// Estructura del controlador PID
 
 typedef struct {
     float kp, ki, kd;
@@ -41,8 +80,10 @@ typedef struct {
     float previous_error;
     float output;
     bool enabled;
+    bool ssr_status;    // Estado del SSR
 } PIDController;
 
+// Instancia global del controlador PID
 static PIDController pid = {
     .kp = 1.5f,
     .ki = 0.03f,
@@ -51,17 +92,13 @@ static PIDController pid = {
     .integral = 0.0f,
     .previous_error = 0.0f,
     .output = 0.0f,
-    .enabled = false
+    .enabled = false,
+    .ssr_status = false
 };
 
-static bool ssr_activo = false;
-
-// Variables auxiliares de control de estabilidad
+// Variables de estado
 static float last_temp = 0.0f;
 static uint8_t stable_cycle_count = 0;
-#define WATCHDOG_RISE 2.0f
-#define STABLE_THRESHOLD 0.5f
-#define STABLE_CYCLES_FOR_RESET 3
 
 // ───────────────────────────────────────────────────────
 // Control del relé SSR
@@ -72,7 +109,7 @@ static uint8_t stable_cycle_count = 0;
 void activar_ssr(void) {
     CH422G_EnsurePushPullMode();
     CH422G_od_output(0x00);
-    ssr_activo = true;
+    pid.ssr_status = true;
 }
 
 /**
@@ -81,15 +118,15 @@ void activar_ssr(void) {
 void desactivar_ssr(void) {
     CH422G_EnsurePushPullMode();
     CH422G_od_output(0x02);
-    ssr_activo = false;
+    pid.ssr_status = false;
 }
 
 /**
  * @brief Verifica si el SSR está activo.
  * @return true si está encendido, false si está apagado.
  */
-bool pid_ssr_activo(void) {
-    return ssr_activo;
+bool pid_ssr_status(void) {
+    return pid.ssr_status;
 }
 
 // ───────────────────────────────────────────────────────
@@ -102,23 +139,33 @@ bool pid_ssr_activo(void) {
  * @return float Salida PID normalizada entre 0–100.
  */
 static float pid_compute(float current_temp) {
-    float dt = SAMPLE_TIME_MS / 1000.0f;
-    float error = pid.setpoint - current_temp;
+    const float dt = pid_config.sample_time_ms / 1000.0f;
+    const float error = pid.setpoint - current_temp;
+    
+    // Cálculo del término integral con anti-windup
     pid.integral += error * dt;
-    float derivative = (error - pid.previous_error) / dt;
-
-    float output = pid.kp * error + pid.ki * pid.integral + pid.kd * derivative;
-
-    if (output > PID_OUTPUT_MAX) {
-        output = PID_OUTPUT_MAX;
-        pid.integral -= error * dt;
-    } else if (output < PID_OUTPUT_MIN) {
-        output = PID_OUTPUT_MIN;
-        pid.integral -= error * dt;
+    
+    // Cálculo del término derivativo
+    const float derivative = (error - pid.previous_error) / dt;
+    
+    // Cálculo de la salida PID
+    float output = pid.kp * error + 
+                  pid.ki * pid.integral + 
+                  pid.kd * derivative;
+    
+    // Anti-windup y limitación de salida
+    if (output > pid_config.output_max) {
+        output = pid_config.output_max;
+        pid.integral -= error * dt;  // Anti-windup
+    } else if (output < pid_config.output_min) {
+        output = pid_config.output_min;
+        pid.integral -= error * dt;  // Anti-windup
     }
-
+    
+    // Actualización de estado
     pid.previous_error = error;
     pid.output = output;
+    
     return output;
 }
 
@@ -129,28 +176,34 @@ static float pid_compute(float current_temp) {
  * Incluye lógica de protección por sobretemperatura (0.5°C sobre el setpoint).
  */
 static void pid_task(void *pvParameters) {
-    const TickType_t xDelay = pdMS_TO_TICKS(SAMPLE_TIME_MS);
+    const TickType_t xDelay = pdMS_TO_TICKS(pid_config.sample_time_ms);
+    const float TEMP_OVERSHOOT_THRESHOLD = 0.5f;
 
     while (1) {
-        float current_temp = read_ema_temp();
+        // Lectura de temperatura actual
+        const float current_temp = read_ema_temp();
         last_temp = current_temp;
 
         if (pid.enabled) {
-            float error = pid.setpoint - current_temp;
+            const float error = pid.setpoint - current_temp;
 
-            if (error < -0.5f) {
+            // Protección contra sobretemperatura
+            if (error < -TEMP_OVERSHOOT_THRESHOLD) {
                 desactivar_ssr();
-                printf("[PID] 🧊 Sobrepasó el setpoint +0.5°C → SSR apagado\n");
+                printf("[PID] 🧊 Sobrepasó el setpoint +%.1f°C → SSR apagado\n", TEMP_OVERSHOOT_THRESHOLD);
                 vTaskDelay(xDelay);
                 continue;
             }
 
-            float control = pid_compute(current_temp);
-            uint32_t on_time_ms = (uint32_t)((control / 100.0f) * SAMPLE_TIME_MS);
-            uint32_t off_time_ms = SAMPLE_TIME_MS - on_time_ms;
+            // Cálculo del control PID
+            const float control = pid_compute(current_temp);
+            const uint32_t on_time_ms = (uint32_t)((control / 100.0f) * pid_config.sample_time_ms);
+            const uint32_t off_time_ms = pid_config.sample_time_ms - on_time_ms;
 
+            // Control del SSR con modulación PWM
             if (on_time_ms > 0) {
-                printf("[PID] 🔌 Encendiendo SSR por %lu ms (Control %.2f%%)\n", (unsigned long)on_time_ms, control);
+                printf("[PID] 🔌 Encendiendo SSR por %lu ms (Control %.2f%%)\n", 
+                       (unsigned long)on_time_ms, control);
                 activar_ssr();
                 vTaskDelay(pdMS_TO_TICKS(on_time_ms));
             }
@@ -160,7 +213,6 @@ static void pid_task(void *pvParameters) {
                 desactivar_ssr();
                 vTaskDelay(pdMS_TO_TICKS(off_time_ms));
             }
-
         } else {
             desactivar_ssr();
             vTaskDelay(xDelay);
@@ -177,15 +229,15 @@ static void pid_task(void *pvParameters) {
 static void autotune_task(void *pvParameters) {
     pid.enabled = false;
 
-    const float hysteresis = 0.5f;
-    const float relay_high = 100.0f;
-    const float relay_low  = 0.0f;
+    const float hysteresis = pid_config.autotune_hysteresis;
+    const float relay_high = pid_config.autotune_relay_high;
+    const float relay_low = pid_config.autotune_relay_low;
     const float d = (relay_high - relay_low) / 2.0f;
 
     float setpoint = 50.0f;
 
     uint8_t cycleCount = 0;
-    const uint8_t minCycles = 5;
+    const uint8_t minCycles = pid_config.autotune_min_cycles;
     float periodSum = 0.0f;
     TickType_t lastOnTick = 0;
 
@@ -220,7 +272,7 @@ static void autotune_task(void *pvParameters) {
             CH422G_od_output(0x02);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(pid_config.autotune_delay_ms));
     }
 
     CH422G_od_output(0x02);
@@ -250,9 +302,9 @@ static void autotune_task(void *pvParameters) {
  */
 void pid_controller_init(float setpoint) {
     if (pid_load_params() != ESP_OK) {
-        pid.kp = kp_default;
-        pid.ki = ki_default;
-        pid.kd = kd_default;
+        pid.kp = pid_config.kp_default;
+        pid.ki = pid_config.ki_default;
+        pid.kd = pid_config.kd_default;
     }
 
     pid.setpoint = setpoint;
@@ -268,14 +320,14 @@ void pid_controller_init(float setpoint) {
 /**
  * @brief Activa el controlador PID.
  */
-void pid_enable(void) {
+void enable_pid(void) {
     pid.enabled = true;
 }
 
 /**
  * @brief Desactiva el controlador PID y apaga el SSR.
  */
-void pid_disable(void) {
+void disable_pid(void) {
     pid.enabled = false;
     desactivar_ssr();
 }

@@ -111,12 +111,12 @@ void ApagarBt(lv_event_t * e) {
 void EncenderPID(lv_event_t *e) {
     float setpoint = lv_arc_get_value(ui_ArcSetTemp);  // Obtiene el setpoint desde la UI
     pid_set_setpoint(setpoint);    
-    pid_enable();                    // Lo pasa al controlador                                     // Activa el PID
+    enable_pid();                    // Lo pasa al controlador                                     // Activa el PID
     printf("PID habilitado desde GUI (Setpoint = %.2f°C)\n", setpoint);
 }
 
 void ApagarPID(lv_event_t *e) {
-    pid_disable();          // Desactiva la lógica PID
+    disable_pid();          // Desactiva la lógica PID
     desactivar_ssr();       // 💥 Apaga físicamente el relé (¡clave!)
     printf("PID deshabilitado desde GUI\n");
 }

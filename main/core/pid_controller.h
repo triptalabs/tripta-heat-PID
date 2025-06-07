@@ -31,12 +31,12 @@ void pid_controller_init(float setpoint);
 /**
  * @brief Activa el funcionamiento del PID.
  */
-void pid_enable(void);
+void enable_pid(void);
 
 /**
  * @brief Desactiva el funcionamiento del PID y apaga el SSR.
  */
-void pid_disable(void);
+void disable_pid(void);
 
 /**
  * @brief Asigna nuevos valores a los parámetros PID (Kp, Ki, Kd) y los guarda en NVS.
@@ -59,7 +59,7 @@ void pid_set_setpoint(float sp);
  *
  * @return true si el SSR está encendido, false si está apagado.
  */
-bool pid_ssr_activo(void);
+bool pid_ssr_status(void);
 
 /**
  * @brief Guarda los parámetros PID actuales en la NVS (almacenamiento no volátil).
