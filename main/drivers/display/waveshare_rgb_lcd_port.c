@@ -214,7 +214,7 @@ esp_err_t waveshare_esp32_s3_rgb_lcd_init()
  * 
  * @return esp_err_t Returns ESP_OK on success, or an error code otherwise.
  */
-esp_err_t wavesahre_rgb_lcd_bl_on()
+esp_err_t waveshare_rgb_lcd_bl_on()
 {
     uint8_t write_buf = 0x01;
     i2c_master_write_to_device(I2C_MASTER_NUM, 0x24, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
