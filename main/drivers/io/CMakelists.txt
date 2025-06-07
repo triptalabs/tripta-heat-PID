@@ -1,0 +1,5 @@
+idf_component_register(
+    SRCS "CH422G.c"
+    INCLUDE_DIRS "."
+    REQUIRES driver
+)
