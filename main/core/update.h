@@ -32,17 +32,63 @@
 extern "C" {
 #endif
 
-/**
- * @def FIRMWARE_URL
- * @brief URL fija del firmware más reciente (.bin) alojado en GitHub.
- */
-#define FIRMWARE_URL "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/lvgl_porting.bin "
+// Incluir configuración secreta si existe
+#ifdef UPDATE_CONFIG_H
+#include "update_config.h"
+#endif
 
 /**
- * @def VERSION_URL
- * @brief URL del archivo JSON que contiene la versión más reciente disponible del firmware.
+ * @def FIRMWARE_URL_DEFAULT
+ * @brief URL por defecto del firmware más reciente (.bin) alojado en GitHub.
  */
-#define VERSION_URL "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/version.json "
+#ifdef SECRET_FIRMWARE_URL
+#define FIRMWARE_URL_DEFAULT SECRET_FIRMWARE_URL
+#else
+#define FIRMWARE_URL_DEFAULT "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/lvgl_porting.bin"
+#endif
+
+/**
+ * @def VERSION_URL_DEFAULT
+ * @brief URL por defecto del archivo JSON que contiene la versión más reciente disponible del firmware.
+ */
+#ifdef SECRET_VERSION_URL
+#define VERSION_URL_DEFAULT SECRET_VERSION_URL
+#else
+#define VERSION_URL_DEFAULT "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/version.json"
+#endif
+
+/**
+ * @def VERSION_CHECK_TIMEOUT_DEFAULT
+ * @brief Timeout por defecto para verificación de versión (ms)
+ */
+#define VERSION_CHECK_TIMEOUT_DEFAULT 15000
+
+/**
+ * @def DOWNLOAD_TIMEOUT_DEFAULT
+ * @brief Timeout por defecto para descarga de firmware (ms)
+ */
+#define DOWNLOAD_TIMEOUT_DEFAULT 300000
+
+/**
+ * @struct update_config_t
+ * @brief Estructura de configuración para el módulo de actualización
+ */
+typedef struct {
+    const char *firmware_url;    ///< URL del firmware más reciente
+    const char *version_url;     ///< URL del archivo de versión
+    int version_check_timeout;   ///< Timeout para verificación de versión (ms)
+    int download_timeout;        ///< Timeout para descarga de firmware (ms)
+} update_config_t;
+
+/**
+ * @brief Configura las URLs y timeouts del módulo de actualización
+ * 
+ * @param config Estructura con la configuración deseada
+ * @return
+ * - ESP_OK: Configuración exitosa
+ * - ESP_ERR_INVALID_ARG: Configuración inválida
+ */
+esp_err_t update_set_config(const update_config_t *config);
 
 /**
  * @brief Inicializa el módulo de actualización OTA.

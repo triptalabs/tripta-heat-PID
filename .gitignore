@@ -38,3 +38,6 @@ __pycache__/
 *.orig
 *.rej
 *.sublime-workspace
+
+# Archivos de configuración secreta
+main/core/update_config.h

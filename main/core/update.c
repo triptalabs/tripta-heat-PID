@@ -76,6 +76,12 @@
 #define VERSION_URL "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/version.json "
 
 /**
+ * @def VERSION_BUFFER_SIZE
+ * @brief Tamaño del buffer para leer el archivo de versión
+ */
+#define VERSION_BUFFER_SIZE 128
+
+/**
  * @var is_update_pending
  * @brief Indicador interno del módulo que señala si hay una actualización pendiente.
  *
@@ -91,6 +97,17 @@ static bool is_update_pending = false;
  * Se usa internamente para evitar montajes repetidos.
  */
 static bool sd_mounted = false;
+
+/**
+ * @var current_config
+ * @brief Configuración actual del módulo de actualización
+ */
+static update_config_t current_config = {
+    .firmware_url = FIRMWARE_URL_DEFAULT,
+    .version_url = VERSION_URL_DEFAULT,
+    .version_check_timeout = VERSION_CHECK_TIMEOUT_DEFAULT,
+    .download_timeout = DOWNLOAD_TIMEOUT_DEFAULT
+};
 
 /**
  * @brief Monta la tarjeta microSD si aún no ha sido montada.
@@ -135,8 +152,16 @@ static esp_err_t mount_sdcard_if_needed(void) {
  */
 esp_err_t update_init(void) {
     ESP_LOGI(TAG, "Inicializando módulo de actualización OTA...");
+    
+    // Inicializar configuración por defecto
+    current_config.firmware_url = FIRMWARE_URL_DEFAULT;
+    current_config.version_url = VERSION_URL_DEFAULT;
+    current_config.version_check_timeout = VERSION_CHECK_TIMEOUT_DEFAULT;
+    current_config.download_timeout = DOWNLOAD_TIMEOUT_DEFAULT;
+    
     // Reset por defecto
     is_update_pending = false;
+    
     // Intentar verificar si hay actualización
     bool update_flag = false;
     esp_err_t err = update_check(&update_flag);
@@ -170,8 +195,8 @@ esp_err_t update_check(bool *update_available) {
     is_update_pending = false;
 
     esp_http_client_config_t config = {
-        .url = VERSION_URL,
-        .timeout_ms = 5000,
+        .url = current_config.version_url,
+        .timeout_ms = current_config.version_check_timeout,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -187,7 +212,7 @@ esp_err_t update_check(bool *update_available) {
         return err;
     }
 
-    char buffer[128] = {0};
+    char buffer[VERSION_BUFFER_SIZE] = {0};
     int len = esp_http_client_read(client, buffer, sizeof(buffer) - 1);
     esp_http_client_cleanup(client);
     if (len <= 0) {
@@ -248,11 +273,11 @@ esp_err_t update_download_firmware(const char *local_path) {
     esp_err_t err = mount_sdcard_if_needed();
     if (err != ESP_OK) return err;
 
-    ESP_LOGI(TAG, "Descargando firmware desde URL fija: %s", FIRMWARE_URL);
+    ESP_LOGI(TAG, "Descargando firmware desde URL: %s", current_config.firmware_url);
 
     esp_http_client_config_t config = {
-        .url = FIRMWARE_URL,
-        .timeout_ms = 10000,
+        .url = current_config.firmware_url,
+        .timeout_ms = current_config.download_timeout,
         .buffer_size = 4096,
         .keep_alive_enable = true,
     };
@@ -438,4 +463,21 @@ bool update_there_is_update(void) {
 void update_clear_flag(void) {
     is_update_pending = false;
     ESP_LOGI(TAG, "Estado de actualización reiniciado manualmente");
+}
+
+esp_err_t update_set_config(const update_config_t *config) {
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if (!config->firmware_url || !config->version_url) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if (config->version_check_timeout <= 0 || config->download_timeout <= 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    current_config = *config;
+    return ESP_OK;
 }

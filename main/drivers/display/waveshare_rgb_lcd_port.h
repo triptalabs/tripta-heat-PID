@@ -224,7 +224,7 @@ esp_err_t waveshare_esp32_s3_rgb_lcd_init();
  * 
  * @return esp_err_t Returns ESP_OK on success, or an error code otherwise.
  */
-esp_err_t wavesahre_rgb_lcd_bl_on();
+esp_err_t waveshare_rgb_lcd_bl_on();
 
 /**
  * @brief Turns off the backlight of the RGB LCD.

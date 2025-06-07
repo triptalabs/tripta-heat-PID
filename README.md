@@ -140,6 +140,25 @@ triptalabs-heat-controller/
 
 El dispositivo verifica periódicamente si hay una versión nueva disponible en GitHub. Si la encuentra, descarga el nuevo binario a la microSD y lo flashea automáticamente. En caso de fallo, restaura desde un backup local.
 
+### Configuración de URLs OTA
+
+Para mantener las URLs de actualización seguras y fuera del repositorio:
+
+1. Copia el archivo de ejemplo:
+   ```bash
+   cp main/core/update_config.h.example main/core/update_config.h
+   ```
+
+2. Edita `update_config.h` con tus URLs:
+   ```c
+   #define SECRET_FIRMWARE_URL "https://tu-servidor.com/firmware.bin"
+   #define SECRET_VERSION_URL "https://tu-servidor.com/version.json"
+   ```
+
+3. El archivo `update_config.h` está en `.gitignore` y no se subirá al repositorio.
+
+Si no se configura `update_config.h`, el sistema usará las URLs por defecto definidas en `update.h`.
+
 ---
 
 ## 📊 Interfaz táctil
