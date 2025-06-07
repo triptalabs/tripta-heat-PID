@@ -65,6 +65,7 @@ idf_component_register(
         console
         espressif__esp-modbus
         lvgl__lvgl
+        wifi_manager
 )
 
 # Añadir rutas privadas adicionales
