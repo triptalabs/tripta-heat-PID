@@ -1,13 +1,9 @@
 dependencies:
   espressif/esp-modbus:
-    component_hash: e42ebfdfc9d8e46821a915b4c1a5c6465c44dbd4e1bca10531e26f4adc7acc42
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=4.3'
+    dependencies: []
     source:
-      registry_url: https://components.espressif.com/
-      type: service
+      path: C:\Users\cliente\Desktop\Python\triptalabs-heat-controller\components\espressif__esp-modbus
+      type: local
     version: 1.0.17
   espressif/esp_lcd_touch:
     dependencies: []
@@ -37,6 +33,6 @@ direct_dependencies:
 - espressif/esp_lcd_touch_gt911
 - idf
 - lvgl/lvgl
-manifest_hash: 0e4ad55b231958b6f340ab6f7e320b1206a772cc971658b880321047289b4507
+manifest_hash: 8c4e80119da605b707987306dfdbf70c59a727e825786ade9a68a76adc42d5f3
 target: esp32s3
 version: 2.0.0
