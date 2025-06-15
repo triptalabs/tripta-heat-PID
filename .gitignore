@@ -30,6 +30,7 @@ Thumbs.db
 __pycache__/
 *.tgz
 *.tar.gz
+managed_components/
 
 # 🛠️ ESP-IDF TOOLS (opcional si estás usando instalación global)
 .espressif/
