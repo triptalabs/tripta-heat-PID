@@ -80,15 +80,7 @@ typedef struct {
     int download_timeout;        ///< Timeout para descarga de firmware (ms)
 } update_config_t;
 
-/**
- * @brief Configura las URLs y timeouts del módulo de actualización
- * 
- * @param config Estructura con la configuración deseada
- * @return
- * - ESP_OK: Configuración exitosa
- * - ESP_ERR_INVALID_ARG: Configuración inválida
- */
-esp_err_t update_set_config(const update_config_t *config);
+
 
 /**
  * @brief Inicializa el módulo de actualización OTA.
