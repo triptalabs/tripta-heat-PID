@@ -12,6 +12,8 @@
 
 #include "waveshare_rgb_lcd_port.h"
 
+static const char *TAG = "rgb_lcd";
+
 /**
  * @brief Callback function for VSYNC event.
  * 

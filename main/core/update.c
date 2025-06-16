@@ -504,7 +504,13 @@ void update_clear_flag(void) {
     ESP_LOGI(TAG, "Estado de actualización reiniciado manualmente");
 }
 
-
+/**
+ * @brief Configura los parámetros de actualización.
+ *
+ * @param[in] config Estructura de configuración con URLs y timeouts.
+ * @return ESP_OK en caso de éxito, ESP_ERR_INVALID_ARG si la configuración es inválida.
+ */
+esp_err_t update_set_config(const update_config_t *config) {
     if (!config) {
         return ESP_ERR_INVALID_ARG;
     }
