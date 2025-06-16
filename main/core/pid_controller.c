@@ -26,74 +26,114 @@
 // ───────────────────────────────────────────────────────
 // Estructura de configuración
 
+/**
+ * @struct PIDConfig_t
+ * @brief Estructura que contiene la configuración del controlador PID
+ * 
+ * @details Esta estructura almacena todos los parámetros de configuración necesarios
+ * para el funcionamiento del controlador PID, incluyendo:
+ * - Límites de salida (output_max, output_min)
+ * - Tiempo de muestreo (sample_time_ms)
+ * - Parámetros de estabilidad (watchdog_rise, stable_threshold, stable_cycles_for_reset)
+ * - Parámetros de autotuning (autotune_hysteresis, autotune_relay_high, autotune_relay_low,
+ *   autotune_min_cycles, autotune_delay_ms)
+ * - Parámetros PID predeterminados (kp_default, ki_default, kd_default)
+ */
 typedef struct {
-    // Límites de salida PID
-    float output_max;
-    float output_min;
-    
-    // Tiempo de muestreo
-    uint32_t sample_time_ms;
-    
-    // Parámetros de estabilidad
-    float watchdog_rise;
-    float stable_threshold;
-    uint8_t stable_cycles_for_reset;
-    
-    // Parámetros de autotuning
-    float autotune_hysteresis;
-    float autotune_relay_high;
-    float autotune_relay_low;
-    uint8_t autotune_min_cycles;
-    uint32_t autotune_delay_ms;
-    
-    // Parámetros PID predeterminados
-    float kp_default;
-    float ki_default;
-    float kd_default;
+    float output_max;           ///< Límite máximo de salida del controlador (porcentaje)
+    float output_min;           ///< Límite mínimo de salida del controlador (porcentaje)
+    uint32_t sample_time_ms;    ///< Tiempo entre muestras del controlador en milisegundos
+    float watchdog_rise;        ///< Umbral de subida para el watchdog en grados
+    float stable_threshold;     ///< Umbral de estabilidad en grados
+    uint8_t stable_cycles_for_reset;  ///< Número de ciclos estables necesarios para resetear
+    float autotune_hysteresis;  ///< Histéresis para el autotuning en grados
+    float autotune_relay_high;  ///< Valor alto del relé durante autotuning (porcentaje)
+    float autotune_relay_low;   ///< Valor bajo del relé durante autotuning (porcentaje)
+    uint8_t autotune_min_cycles;///< Número mínimo de ciclos para el autotuning
+    uint32_t autotune_delay_ms; ///< Retardo entre ciclos de autotuning en milisegundos
+    float kp_default;           ///< Ganancia proporcional por defecto
+    float ki_default;           ///< Ganancia integral por defecto
+    float kd_default;           ///< Ganancia derivativa por defecto
 } PIDConfig_t;
 
-// Configuración global
+/**
+ * @brief Configuración global del controlador PID
+ * 
+ * @details Define los parámetros por defecto para el control PID del horno:
+ * - Límites de salida (0-100%)
+ * - Tiempo de muestreo (5 segundos)
+ * - Umbrales de estabilidad y watchdog
+ * - Parámetros de autotuning
+ * - Valores PID predeterminados
+ * 
+ * @note Esta configuración se utiliza como base para el control de temperatura
+ * del horno y puede ser modificada según las necesidades específicas.
+ */
 static const PIDConfig_t pid_config = {
-    .output_max = 100.0f,
-    .output_min = 0.0f,
-    .sample_time_ms = 5000,
-    .watchdog_rise = 2.0f,
-    .stable_threshold = 0.5f,
-    .stable_cycles_for_reset = 3,
-    .autotune_hysteresis = 0.5f,
-    .autotune_relay_high = 100.0f,
-    .autotune_relay_low = 0.0f,
-    .autotune_min_cycles = 5,
-    .autotune_delay_ms = 100,
-    .kp_default = 1.0f,
-    .ki_default = 0.1f,
-    .kd_default = 2.0f
+    .output_max = 100.0f,           // Límite máximo de salida (100%)
+    .output_min = 0.0f,             // Límite mínimo de salida (0%)
+    .sample_time_ms = 5000,         // Tiempo entre muestras (5 segundos)
+    .watchdog_rise = 2.0f,          // Umbral de subida para watchdog (2°C)
+    .stable_threshold = 0.5f,       // Umbral de estabilidad (0.5°C)
+    .stable_cycles_for_reset = 3,   // Ciclos estables para resetear
+    .autotune_hysteresis = 0.5f,    // Histéresis para autotuning (0.5°C)
+    .autotune_relay_high = 100.0f,  // Valor alto del relé (100%)
+    .autotune_relay_low = 0.0f,     // Valor bajo del relé (0%)
+    .autotune_min_cycles = 5,       // Mínimo de ciclos para autotuning
+    .autotune_delay_ms = 100,       // Retardo entre ciclos (100ms)
+    .kp_default = 1.0f,             // Ganancia proporcional por defecto
+    .ki_default = 0.1f,             // Ganancia integral por defecto
+    .kd_default = 2.0f              // Ganancia derivativa por defecto
 };
 
-// ───────────────────────────────────────────────────────
-// Estructura del controlador PID
 
+/**
+ * @struct PIDController
+ * @brief Estructura que implementa un controlador PID para el horno
+ * 
+ * @details Esta estructura mantiene el estado interno del controlador PID:
+ * - Constantes de control (kp, ki, kd)
+ * - Punto de consigna (setpoint)
+ * - Término integral acumulado
+ * - Error anterior para cálculo derivativo
+ * - Salida del controlador
+ * - Estado de habilitación
+ * - Estado del SSR (Solid State Relay)
+ */
 typedef struct {
-    float kp, ki, kd;
-    float setpoint;
-    float integral;
-    float previous_error;
-    float output;
-    bool enabled;
-    bool ssr_status;    // Estado del SSR
+    float kp, ki, kd;           // Constantes PID
+    float setpoint;             // Temperatura objetivo
+    float integral;             // Término integral acumulado
+    float previous_error;       // Error anterior para derivativo
+    float output;               // Salida del controlador (0-100%)
+    bool enabled;               // Estado de habilitación
+    bool ssr_status;            // Estado del SSR
 } PIDController;
 
-// Instancia global del controlador PID
+/**
+ * @brief Instancia global del controlador PID
+ * 
+ * @details Inicializa el controlador PID con valores predeterminados:
+ * - kp: 1.5 (ganancia proporcional)
+ * - ki: 0.03 (ganancia integral)
+ * - kd: 25.0 (ganancia derivativa)
+ * - setpoint: 0.0 (temperatura objetivo inicial)
+ * - integral: 0.0 (término integral inicial)
+ * - previous_error: 0.0 (error anterior inicial)
+ * - output: 0.0 (salida inicial)
+ * - enabled: false (controlador deshabilitado inicialmente)
+ * - ssr_status: false (SSR desactivado inicialmente)
+ */
 static PIDController pid = {
-    .kp = 1.5f,
-    .ki = 0.03f,
-    .kd = 25.0f,
-    .setpoint = 0.0f,
-    .integral = 0.0f,
-    .previous_error = 0.0f,
-    .output = 0.0f,
-    .enabled = false,
-    .ssr_status = false
+    .kp = 1.5f,              // Ganancia proporcional inicial
+    .ki = 0.03f,             // Ganancia integral inicial
+    .kd = 25.0f,             // Ganancia derivativa inicial
+    .setpoint = 0.0f,        // Temperatura objetivo inicial
+    .integral = 0.0f,        // Término integral inicial
+    .previous_error = 0.0f,  // Error anterior inicial
+    .output = 0.0f,          // Salida del controlador inicial
+    .enabled = false,        // Controlador deshabilitado inicialmente
+    .ssr_status = false      // SSR desactivado inicialmente
 };
 
 // Variables de estado

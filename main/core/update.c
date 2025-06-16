@@ -38,6 +38,14 @@
 #define TAG "UPDATE"
 
 /**
+ * @def MOUNT_POINT
+ * @brief Ruta del punto de montaje de la microSD en el sistema de archivos VFS.
+ *
+ * Este valor se usa para montar y acceder a archivos en la microSD desde el firmware.
+ */
+#define MOUNT_POINT "/sdcard/"
+
+/**
  * @def FIRMWARE_URL
  * @brief URL fija del firmware más reciente (.bin) alojado en GitHub.
  *
@@ -46,14 +54,6 @@
  * generado por PlatformIO o ESP-IDF.
  */
 #define FIRMWARE_URL "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/lvgl_porting.bin "
-
-/**
- * @def MOUNT_POINT
- * @brief Ruta del punto de montaje de la microSD en el sistema de archivos VFS.
- *
- * Este valor se usa para montar y acceder a archivos en la microSD desde el firmware.
- */
-#define MOUNT_POINT "/sdcard/"
 
 /**
  * @def FIRMWARE_VERSION
@@ -187,24 +187,29 @@ esp_err_t update_init(void) {
  *      - ESP_ERR_INVALID_ARG: Si el puntero update_available es nulo
  */
 esp_err_t update_check(bool *update_available) {
+    // Verificar que el puntero de salida no sea nulo
     if (update_available == NULL) {
         ESP_LOGE(TAG, "update_check: Puntero nulo");
         return ESP_ERR_INVALID_ARG;
     }
-    *update_available = false;
+    // Inicializar variables de estado
+    *update_available = false; // Inicializa la variable de salida
     is_update_pending = false;
 
+    // Configurar cliente HTTP para obtener la versión
     esp_http_client_config_t config = {
         .url = current_config.version_url,
         .timeout_ms = current_config.version_check_timeout,
     };
 
+    // Inicializar cliente HTTP
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == NULL) {
         ESP_LOGE(TAG, "No se pudo inicializar cliente HTTP");
         return ESP_FAIL;
     }
 
+    // Abrir conexión HTTP
     esp_err_t err = esp_http_client_open(client, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Fallo al abrir conexión HTTP: %s", esp_err_to_name(err));
@@ -212,6 +217,7 @@ esp_err_t update_check(bool *update_available) {
         return err;
     }
 
+    // Leer respuesta del servidor
     char buffer[VERSION_BUFFER_SIZE] = {0};
     int len = esp_http_client_read(client, buffer, sizeof(buffer) - 1);
     esp_http_client_cleanup(client);
@@ -221,6 +227,7 @@ esp_err_t update_check(bool *update_available) {
     }
     buffer[len] = '\0';
 
+    // Buscar y extraer la versión del JSON
     const char *version_key = "\"version\":";
     char *start = strstr(buffer, version_key);
     if (!start) {
@@ -229,7 +236,10 @@ esp_err_t update_check(bool *update_available) {
     }
     start += strlen(version_key);
 
+    // Limpiar espacios y comillas iniciales
     while (*start && (*start == ' ' || *start == '\"')) start++;
+    
+    // Extraer la versión remota
     char remote_version[16] = {0};
     int i = 0;
     while (*start && *start != '\"' && *start != '\n' && i < sizeof(remote_version) - 1) {
@@ -237,6 +247,7 @@ esp_err_t update_check(bool *update_available) {
     }
     remote_version[i] = '\0';
 
+    // Comparar versiones y actualizar estado
     ESP_LOGI(TAG, "Versión remota: %s | Versión local: %s", remote_version, FIRMWARE_VERSION);
     if (strcmp(remote_version, FIRMWARE_VERSION) != 0) {
         *update_available = true;
@@ -265,29 +276,35 @@ esp_err_t update_check(bool *update_available) {
  *      - ESP_ERR_INVALID_ARG: Si la ruta es nula
  */
 esp_err_t update_download_firmware(const char *local_path) {
+    // Verificar que la ruta de destino sea válida
     if (!local_path) {
         ESP_LOGE(TAG, "Ruta local nula para descarga");
         return ESP_ERR_INVALID_ARG;
     }
 
+    // Montar la tarjeta SD si no está montada
     esp_err_t err = mount_sdcard_if_needed();
     if (err != ESP_OK) return err;
 
+    // Iniciar descarga desde la URL configurada
     ESP_LOGI(TAG, "Descargando firmware desde URL: %s", current_config.firmware_url);
 
+    // Configurar cliente HTTP con parámetros de descarga
     esp_http_client_config_t config = {
-        .url = current_config.firmware_url,
-        .timeout_ms = current_config.download_timeout,
-        .buffer_size = 4096,
-        .keep_alive_enable = true,
+        .url = current_config.firmware_url,        // URL del firmware
+        .timeout_ms = current_config.download_timeout,  // Timeout configurado
+        .buffer_size = 4096,                      // Buffer de lectura
+        .keep_alive_enable = true,                // Mantener conexión activa
     };
 
+    // Inicializar cliente HTTP
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == NULL) {
         ESP_LOGE(TAG, "No se pudo inicializar cliente HTTP");
         return ESP_FAIL;
     }
 
+    // Abrir conexión HTTP
     err = esp_http_client_open(client, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error al abrir conexión HTTP: %s", esp_err_to_name(err));
@@ -295,6 +312,7 @@ esp_err_t update_download_firmware(const char *local_path) {
         return err;
     }
 
+    // Abrir archivo en SD para escritura
     FILE *f = fopen(local_path, "wb");
     if (!f) {
         ESP_LOGE(TAG, "No se pudo abrir archivo en SD: %s", local_path);
@@ -302,10 +320,12 @@ esp_err_t update_download_firmware(const char *local_path) {
         return ESP_FAIL;
     }
 
+    // Descargar datos en bloques y escribir a archivo
     int total_read = 0;
     int data_read;
     char buffer[4096];
     while ((data_read = esp_http_client_read(client, buffer, sizeof(buffer))) > 0) {
+        // Escribir bloque descargado al archivo
         if (fwrite(buffer, 1, data_read, f) != data_read) {
             ESP_LOGE(TAG, "Error al escribir en archivo");
             fclose(f);
@@ -314,14 +334,18 @@ esp_err_t update_download_firmware(const char *local_path) {
         }
         total_read += data_read;
     }
+
+    // Cerrar archivo y limpiar cliente HTTP
     fclose(f);
     esp_http_client_cleanup(client);
 
+    // Verificar que se descargó al menos un byte
     if (total_read == 0) {
         ESP_LOGW(TAG, "No se descargó ningún dato");
         return ESP_FAIL;
     }
 
+    // Reportar éxito y tamaño descargado
     ESP_LOGI(TAG, "Descarga completada: %d bytes", total_read);
     return ESP_OK;
 }
@@ -339,11 +363,13 @@ esp_err_t update_download_firmware(const char *local_path) {
  *      - ESP_ERR_INVALID_ARG: Si la ruta es nula.
  */
 static esp_err_t flash_from_file(const char *firmware_path) {
+    // Verificar que la ruta del firmware sea válida
     if (!firmware_path) {
         ESP_LOGE(TAG, "Ruta nula recibida en flash_from_file");
         return ESP_ERR_INVALID_ARG;
     }
 
+    // Abrir archivo de firmware
     ESP_LOGI(TAG, "Flasheando desde archivo: %s", firmware_path);
     FILE *f = fopen(firmware_path, "rb");
     if (!f) {
@@ -351,6 +377,7 @@ static esp_err_t flash_from_file(const char *firmware_path) {
         return ESP_FAIL;
     }
 
+    // Obtener partición OTA activa
     const esp_partition_t *running = esp_ota_get_running_partition();
     if (!running) {
         ESP_LOGE(TAG, "No se encontró partición activa");
@@ -358,6 +385,7 @@ static esp_err_t flash_from_file(const char *firmware_path) {
         return ESP_FAIL;
     }
 
+    // Iniciar sesión OTA
     esp_ota_handle_t ota_handle;
     esp_err_t err = esp_ota_begin(running, OTA_SIZE_UNKNOWN, &ota_handle);
     if (err != ESP_OK) {
@@ -366,6 +394,7 @@ static esp_err_t flash_from_file(const char *firmware_path) {
         return err;
     }
 
+    // Leer y escribir firmware en bloques
     char buffer[4096];
     size_t read_bytes;
     while ((read_bytes = fread(buffer, 1, sizeof(buffer), f)) > 0) {
@@ -379,12 +408,14 @@ static esp_err_t flash_from_file(const char *firmware_path) {
     }
     fclose(f);
 
+    // Finalizar sesión OTA
     err = esp_ota_end(ota_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Fallo esp_ota_end: %s", esp_err_to_name(err));
         return err;
     }
 
+    // Establecer nueva partición de arranque
     err = esp_ota_set_boot_partition(running);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Fallo al establecer nueva partición: %s", esp_err_to_name(err));
@@ -412,16 +443,19 @@ static esp_err_t flash_from_file(const char *firmware_path) {
  *      - ESP_ERR_INVALID_STATE: Si no hay actualización pendiente.
  */
 esp_err_t update_perform(const char *firmware_path, const char *fallback_path) {
+    // Verificar que los parámetros de entrada no sean nulos
     if (!firmware_path || !fallback_path) {
         ESP_LOGE(TAG, "Parámetros nulos en update_perform");
         return ESP_ERR_INVALID_ARG;
     }
 
+    // Verificar que haya una actualización pendiente antes de proceder
     if (!is_update_pending) {
         ESP_LOGW(TAG, "No hay actualización pendiente. Abortando flasheo.");
         return ESP_ERR_INVALID_STATE;
     }
 
+    // Paso 1: Descargar el nuevo firmware desde el servidor
     ESP_LOGI(TAG, "Descargando nuevo firmware a: %s", firmware_path);
     esp_err_t err = update_download_firmware(firmware_path);
     if (err != ESP_OK) {
@@ -429,9 +463,11 @@ esp_err_t update_perform(const char *firmware_path, const char *fallback_path) {
         return err;
     }
 
+    // Paso 2: Intentar flashear el firmware descargado
     ESP_LOGI(TAG, "Intentando flashear firmware descargado...");
     err = flash_from_file(firmware_path);
     if (err != ESP_OK) {
+        // Paso 3: Si falla, intentar restaurar desde el backup
         ESP_LOGE(TAG, "Falló la actualización. Intentando restaurar desde backup...");
         err = flash_from_file(fallback_path);
         if (err != ESP_OK) {
@@ -441,7 +477,10 @@ esp_err_t update_perform(const char *firmware_path, const char *fallback_path) {
         ESP_LOGI(TAG, "Restauración completada exitosamente.");
     }
 
+    // Limpiar bandera de actualización pendiente
     is_update_pending = false;
+    
+    // Reiniciar el dispositivo para aplicar los cambios
     esp_restart();  // Reinicio tras flasheo exitoso
     return ESP_OK;  // No se alcanza, pero queda por consistencia
 }
@@ -465,7 +504,7 @@ void update_clear_flag(void) {
     ESP_LOGI(TAG, "Estado de actualización reiniciado manualmente");
 }
 
-esp_err_t update_set_config(const update_config_t *config) {
+
     if (!config) {
         return ESP_ERR_INVALID_ARG;
     }

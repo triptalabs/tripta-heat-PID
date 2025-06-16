@@ -1,12 +1,21 @@
 /**
- * @file rgb_lcd.h
- * @brief Header file for Waveshare RGB LCD and touch controller integration.
+ * @file waveshare_rgb_lcd_port.h
+ * @brief Controlador para pantalla LCD RGB Waveshare con soporte táctil
  * 
- * This file contains the configuration and declarations for initializing and controlling
- * the Waveshare RGB LCD panel, including backlight control, touch functionality, and LVGL integration.
+ * @details Este archivo proporciona la configuración y declaraciones necesarias para inicializar
+ * y controlar una pantalla LCD RGB Waveshare. Incluye funcionalidades para:
+ * - Control del backlight
+ * - Integración con LVGL
+ * - Soporte táctil
+ * - Configuración de pines GPIO
+ * - Configuración I2C
  * 
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
- * SPDX-License-Identifier: CC0-1.0
+ * @author Espressif Systems
+ * @version 1.0
+ * @date 2022
+ * 
+ * @copyright Copyright (c) 2022 Espressif Systems (Shanghai) CO LTD
+ * @license CC0-1.0
  */
 
 #ifndef _RGB_LCD_H_
@@ -24,61 +33,87 @@
 #include "lvgl_port.h"
 
 /**
- * @brief GPIO pin number used for I2C master clock.
+ * @brief Configuración del bus I2C para comunicación con periféricos
+ * @{
+ */
+
+/**
+ * @brief Pin GPIO para la señal de reloj I2C (SCL)
+ * @note Pin 9 en el ESP32-S3
  */
 #define I2C_MASTER_SCL_IO           9
 
 /**
- * @brief GPIO pin number used for I2C master data.
+ * @brief Pin GPIO para la señal de datos I2C (SDA)
+ * @note Pin 8 en el ESP32-S3
  */
 #define I2C_MASTER_SDA_IO           8
 
 /**
- * @brief I2C master port number.
+ * @brief Número del puerto I2C maestro
+ * @note 0 para el primer puerto I2C
  */
 #define I2C_MASTER_NUM              0
 
 /**
- * @brief I2C master clock frequency in Hz.
+ * @brief Frecuencia del reloj I2C en Hz
+ * @note 400kHz es una frecuencia estándar para I2C
  */
 #define I2C_MASTER_FREQ_HZ          400000
 
 /**
- * @brief Disable I2C master transmit buffer.
+ * @brief Deshabilitación del buffer de transmisión I2C
+ * @note 0 indica que el buffer está deshabilitado
  */
 #define I2C_MASTER_TX_BUF_DISABLE   0
 
 /**
- * @brief Disable I2C master receive buffer.
+ * @brief Deshabilitación del buffer de recepción I2C
+ * @note 0 indica que el buffer está deshabilitado
  */
 #define I2C_MASTER_RX_BUF_DISABLE   0
 
 /**
- * @brief Timeout for I2C master operations in milliseconds.
+ * @brief Tiempo de espera para operaciones I2C en milisegundos
+ * @note 1000ms = 1 segundo
  */
 #define I2C_MASTER_TIMEOUT_MS       1000
 
+/** @} */
+
 /**
- * @brief GPIO pin number used for input IO 4.
+ * @brief Configuración de pines GPIO
+ * @{
+ */
+
+/**
+ * @brief Pin GPIO para entrada IO 4
+ * @note Utilizado para entradas digitales
  */
 #define GPIO_INPUT_IO_4             4
 
 /**
- * @brief Bit mask for GPIO input pins.
+ * @brief Máscara de bits para pines de entrada GPIO
+ * @note Configura el pin GPIO_INPUT_IO_4 como entrada
  */
 #define GPIO_INPUT_PIN_SEL          (1ULL << GPIO_INPUT_IO_4)
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////// Please update the following configuration according to your LCD spec //////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/** @} */
 
 /**
- * @brief Horizontal resolution of the LCD panel.
+ * @brief Configuración de la pantalla LCD
+ * @{
+ */
+
+/**
+ * @brief Resolución horizontal de la pantalla LCD
+ * @note Definida por LVGL_PORT_H_RES
  */
 #define EXAMPLE_LCD_H_RES               (LVGL_PORT_H_RES)
 
 /**
- * @brief Vertical resolution of the LCD panel.
+ * @brief Resolución vertical de la pantalla LCD
+ * @note Definida por LVGL_PORT_V_RES
  */
 #define EXAMPLE_LCD_V_RES               (LVGL_PORT_V_RES)
 
@@ -195,44 +230,56 @@
 static const char *TAG = "example";
 
 /**
- * @brief Locks the LVGL library for thread-safe operations.
+ * @brief Funciones de control de la pantalla LCD
+ * @{
+ */
+
+/**
+ * @brief Bloquea la biblioteca LVGL para operaciones seguras en hilos
  * 
- * @param timeout_ms Timeout in milliseconds to acquire the lock.
- * @return bool Returns true if the lock was acquired successfully, false otherwise.
+ * @param timeout_ms Tiempo máximo de espera en milisegundos para adquirir el bloqueo
+ * @return true Si se adquirió el bloqueo exitosamente
+ * @return false Si no se pudo adquirir el bloqueo en el tiempo especificado
  */
 bool example_lvgl_lock(int timeout_ms);
 
 /**
- * @brief Unlocks the LVGL library after thread-safe operations.
+ * @brief Libera el bloqueo de la biblioteca LVGL
+ * 
+ * @note Debe llamarse después de example_lvgl_lock() cuando se complete la operación
  */
 void example_lvgl_unlock(void);
 
 /**
- * @brief Initializes the RGB LCD panel and touch controller.
+ * @brief Inicializa la pantalla LCD RGB y el controlador táctil
  * 
- * Sets up the RGB LCD panel with the specified configuration, initializes the LVGL library,
- * and configures the touch controller (if enabled).
+ * @details Esta función realiza las siguientes tareas:
+ * 1. Configura la pantalla LCD RGB con los parámetros especificados
+ * 2. Inicializa la biblioteca LVGL
+ * 3. Configura el controlador táctil (si está habilitado)
  * 
- * @return esp_err_t Returns ESP_OK on success, or an error code otherwise.
+ * @return esp_err_t ESP_OK si la inicialización fue exitosa, código de error en caso contrario
  */
 esp_err_t waveshare_esp32_s3_rgb_lcd_init();
 
 /**
- * @brief Turns on the backlight of the RGB LCD.
+ * @brief Enciende el backlight de la pantalla LCD RGB
  * 
- * Configures the CH422G chip to enable the backlight by setting the appropriate I2C commands.
+ * @details Configura el chip CH422G para habilitar el backlight mediante comandos I2C
  * 
- * @return esp_err_t Returns ESP_OK on success, or an error code otherwise.
+ * @return esp_err_t ESP_OK si la operación fue exitosa, código de error en caso contrario
  */
 esp_err_t waveshare_rgb_lcd_bl_on();
 
 /**
- * @brief Turns off the backlight of the RGB LCD.
+ * @brief Apaga el backlight de la pantalla LCD RGB
  * 
- * Configures the CH422G chip to disable the backlight by setting the appropriate I2C commands.
+ * @details Configura el chip CH422G para deshabilitar el backlight mediante comandos I2C
  * 
- * @return esp_err_t Returns ESP_OK on success, or an error code otherwise.
+ * @return esp_err_t ESP_OK si la operación fue exitosa, código de error en caso contrario
  */
 esp_err_t wavesahre_rgb_lcd_bl_off();
+
+/** @} */
 
 #endif // _RGB_LCD_H_

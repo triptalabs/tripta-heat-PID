@@ -1,3 +1,18 @@
+/**
+ * @file ui_events.c
+ * @brief Implementación de los manejadores de eventos de la interfaz de usuario
+ * @details Este archivo contiene la implementación de todas las funciones que manejan
+ *          los eventos de la interfaz de usuario, incluyendo:
+ *          - Control de WiFi y Bluetooth
+ *          - Control del sistema PID
+ *          - Gestión del temporizador
+ *          - Configuración de fecha y hora
+ *          - Actualización del firmware
+ * @author SquareLine Studio
+ * @version 1.5.1
+ * @date 2024
+ */
+
 // Este archivo fue generado por SquareLine Studio
 // Versión: 1.5.1 - LVGL 8.3.11
 // Proyecto: UI_draft
@@ -22,12 +37,23 @@
 #include <time.h>
 #include "pid_controller.h"
 
+/**
+ * @brief Comando para establecer parámetros en el CH422G
+ */
 #define CH422_CMD_SET_PARAM   0x48
-#define CH422_PUSH_PULL_MODE  0x00  // IOs como entrada, OCx como push-pull
 
+/**
+ * @brief Modo push-pull para el CH422G
+ * @details Configura los IOs como entrada y OCx como push-pull
+ */
+#define CH422_PUSH_PULL_MODE  0x00
 
+/**
+ * @brief Número de puntos en el gráfico de temperatura
+ */
 #define CHART_POINT_COUNT 240
 
+// Declaraciones de variables externas
 extern lv_obj_t * ui_LabelEditWifiStatus;
 extern lv_obj_t * ui_Dropdown1;
 extern lv_obj_t * ui_LabelWifiPass;
@@ -44,21 +70,31 @@ extern lv_obj_t * ui_RollerHora;
 extern lv_obj_t * ui_RollerMinuto;
 extern lv_obj_t * cui_datetime1;
 
+/**
+ * @brief Etiqueta para los mensajes de log de eventos
+ */
 static const char *EVENTS_TAG = "Events";
 
+/**
+ * @brief Variables para almacenar la fecha y hora
+ */
 static int anio = 2024;
 static int mes = 1;
 static int dia = 1;
 static int hora = 0;
 static int minuto = 0;
 
-
-// Timer LVGL
+/**
+ * @brief Timer LVGL para el control de minutos
+ */
 static lv_timer_t *timer_minutos = NULL;
 static int minutos_restantes = 0;
 
-
-
+/**
+ * @brief Activa el módulo WiFi del dispositivo
+ * @details Inicializa el NVS, configura el modo estación WiFi y lo activa
+ * @param e Puntero al evento que activó la función
+ */
 void EncenderWifi(lv_event_t * e)
 {
     esp_err_t ret = nvs_flash_init();
@@ -83,6 +119,11 @@ void EncenderWifi(lv_event_t * e)
     lv_label_set_text(ui_LabelEditWifiStatus, "Wi-Fi encendido y en modo estación.");
 }
 
+/**
+ * @brief Desactiva el módulo WiFi del dispositivo
+ * @details Detiene y desinicializa el módulo WiFi
+ * @param e Puntero al evento que activó la función
+ */
 void ApagarWifi(lv_event_t * e)
 {
     wifi_mode_t mode;
@@ -100,14 +141,26 @@ void ApagarWifi(lv_event_t * e)
     lv_label_set_text(ui_LabelEditWifiStatus, "Wi-Fi apagado.");
 }
 
+/**
+ * @brief Activa el módulo Bluetooth del dispositivo
+ * @param e Puntero al evento que activó la función
+ */
 void EncenderBt(lv_event_t * e) {
 }
 
+/**
+ * @brief Desactiva el módulo Bluetooth del dispositivo
+ * @param e Puntero al evento que activó la función
+ */
 void ApagarBt(lv_event_t * e) {
     // TODO: Implementar
 }
 
-
+/**
+ * @brief Activa el controlador PID
+ * @details Configura el setpoint y activa el controlador PID
+ * @param e Puntero al evento que activó la función
+ */
 void EncenderPID(lv_event_t *e) {
     float setpoint = lv_arc_get_value(ui_ArcSetTemp);  // Obtiene el setpoint desde la UI
     pid_set_setpoint(setpoint);    
@@ -115,14 +168,22 @@ void EncenderPID(lv_event_t *e) {
     printf("PID habilitado desde GUI (Setpoint = %.2f°C)\n", setpoint);
 }
 
+/**
+ * @brief Desactiva el controlador PID
+ * @details Desactiva el controlador y apaga el relé SSR
+ * @param e Puntero al evento que activó la función
+ */
 void ApagarPID(lv_event_t *e) {
     disable_pid();          // Desactiva la lógica PID
     desactivar_ssr();       // 💥 Apaga físicamente el relé (¡clave!)
     printf("PID deshabilitado desde GUI\n");
 }
 
-
-// Callback del temporizador LVGL
+/**
+ * @brief Callback del temporizador LVGL
+ * @details Actualiza el tiempo restante y apaga el PID cuando se completa
+ * @param t Puntero al temporizador
+ */
 static void timer_callback(lv_timer_t *t) {
     if (--minutos_restantes <= 0) {
         ApagarPID(NULL);
@@ -136,6 +197,11 @@ static void timer_callback(lv_timer_t *t) {
     }
 }
 
+/**
+ * @brief Inicia el temporizador del sistema
+ * @details Configura y activa el temporizador con el valor especificado
+ * @param e Puntero al evento que activó la función
+ */
 void EncenderTimer(lv_event_t *e) {
     if (timer_minutos != NULL) {
         ESP_LOGW(EVENTS_TAG, "Temporizador ya en ejecución.");
@@ -152,6 +218,11 @@ void EncenderTimer(lv_event_t *e) {
     ESP_LOGI(EVENTS_TAG, "Temporizador iniciado con %d minutos.", minutos_restantes);
 }
 
+/**
+ * @brief Detiene el temporizador del sistema
+ * @details Cancela el temporizador y reinicia el contador
+ * @param e Puntero al evento que activó la función
+ */
 void ApagarTimer(lv_event_t *e) {
     if (timer_minutos != NULL) {
         lv_timer_del(timer_minutos);
@@ -163,6 +234,11 @@ void ApagarTimer(lv_event_t *e) {
     lv_arc_set_value(ui_ArcSetTime, 0);
 }
 
+/**
+ * @brief Cambia el nombre del dispositivo Bluetooth
+ * @details Actualiza el nombre del dispositivo Bluetooth con el valor proporcionado
+ * @param e Puntero al evento que activó la función
+ */
 void CambiarNombreBT(lv_event_t *e)
 {
     const char *new_bt_name = lv_textarea_get_text(ui_nombrebt);
@@ -180,6 +256,11 @@ void CambiarNombreBT(lv_event_t *e)
     }
 }
 
+/**
+ * @brief Actualiza la fecha y hora del sistema
+ * @details Configura la fecha y hora del sistema con los valores seleccionados
+ * @param e Puntero al evento que activó la función
+ */
 void CambiarFechaHora(lv_event_t * e) {
     int anio   = lv_roller_get_selected(ui_RollerAnio) + 2025;
     int mes    = lv_roller_get_selected(ui_RollerMes);     // 0–11
@@ -210,7 +291,11 @@ void CambiarFechaHora(lv_event_t * e) {
     lv_label_set_text(cui_datetime1, buffer);
 }
 
-
+/**
+ * @brief Inicia el proceso de actualización del firmware
+ * @details Verifica si hay actualizaciones disponibles y las instala
+ * @param e Puntero al evento que activó la función
+ */
 void UpdateFirmware(lv_event_t * e) {
     if (update_there_is_update()) {
         ESP_LOGI(EVENTS_TAG, "Actualización pendiente: iniciando actualización OTA...");
@@ -223,6 +308,11 @@ void UpdateFirmware(lv_event_t * e) {
     }
 }
 
+/**
+ * @brief Intenta establecer una conexión WiFi
+ * @details Configura y conecta a la red WiFi seleccionada
+ * @param e Puntero al evento que activó la función
+ */
 void TryWifiConn(lv_event_t * e) {
     char ssid[64] = {0};
     lv_dropdown_get_selected_str(ui_Dropdown1, ssid, sizeof(ssid));
@@ -240,6 +330,11 @@ void TryWifiConn(lv_event_t * e) {
     ESP_ERROR_CHECK(esp_wifi_connect());
 }
 
+/**
+ * @brief Actualiza los parámetros del controlador PID
+ * @details Configura los valores de Kp, Ki y Kd del controlador PID
+ * @param e Puntero al evento que activó la función
+ */
 void ActualizarK(lv_event_t * e) {
     const char *kp_str = lv_textarea_get_text(ui_TextAreaKp);
     const char *ki_str = lv_textarea_get_text(ui_TextAreaKi);
@@ -252,12 +347,23 @@ void ActualizarK(lv_event_t * e) {
     pid_set_params(kp, ki, kd);
 }
 
+/**
+ * @brief Actualiza el estado del PID en la interfaz
+ * @details Muestra la temperatura actual y el estado del calentador
+ * @param temperatura Temperatura actual del sistema
+ * @param heating_on Estado del calentador
+ */
 void ui_actualizar_estado_pid(float temperatura, bool heating_on) {
     static char buffer[64];
     snprintf(buffer, sizeof(buffer), "%.1f°C\nTemperatura", temperatura);
     lv_label_set_text(ui_editLabelGetStatus, buffer);
 }
 
+/**
+ * @brief Callback para actualizar la hora en la interfaz
+ * @details Actualiza la hora mostrada en la interfaz cada segundo
+ * @param timer Puntero al temporizador que activó la función
+ */
 void actualizar_hora_cb(lv_timer_t *timer) {
     time_t now;
     struct tm timeinfo;
