@@ -1,0 +1,195 @@
+---
+config:
+  theme: neo-dark
+  layout: elk
+  flowchart:
+    curve: linear
+    nodeSpacing: 40
+    rankSpacing: 50
+    padding: 10
+    htmlLabels: false
+    useMaxWidth: false
+    diagramPadding: 10
+---
+
+flowchart TB
+
+%% =====================
+%% 🎨 CONVENCIONES
+%% =====================
+subgraph CONVENCIONES["🎨 CONVENCIONES"]
+    C1["🟢 Hardware"]
+    C2["🔵 Inicialización"]
+    C3["🟣 Funcional"]
+    C4["🟡 Memoria"]
+    C5["🔴 UI Eventos"]
+    C6["🟠 Comunicación"]
+    C1 --> C2 --> C3 --> C4 --> C5 --> C6
+end
+
+style C1 fill:#6DC36D,stroke:#6DC36D,color:#000000
+style C2 fill:#4FB0C6,stroke:#4FB0C6,color:#000000
+style C3 fill:#B58DB6,stroke:#B58DB6,color:#000000
+style C4 fill:#C9AF5D,stroke:#C9AF5D,color:#000000
+style C5 fill:#C86D6D,stroke:#C86D6D,color:#000000
+style C6 fill:#D38F64,stroke:#D38F64,color:#000000
+
+%% =====================
+%% 🧪 TRIPTALABS-HEAT-CONTROLLER
+%% =====================
+subgraph SYSTEM["🧪 Triptalabs-Heat-Controller"]
+    subgraph HW["🧱 HARDWARE"]
+        ESP32["ESP32-S3
+WiFi + BT
+Dual Core"]
+        DISPLAY["Pantalla Táctil
+Waveshare 5''
+ST7701 + GT911"]
+        PT100["Sensor RTD
+PT100"]
+        RS485["Módulo RS485
+PT21A01-B-MODBUS"]
+        SSR["Relé SSR
+40A, 110V AC"]
+        HEATER["Resistencia
+Calefactora"]
+        SDCARD["MicroSD
+Firmware / Backup"]
+    end
+
+    subgraph RTOS["⚙️ ESP-IDF + RTOS"]
+        FREERTOS["FreeRTOS"]
+        WIFI_STACK["WiFi Stack"]
+        BT_STACK["Bluetooth Stack"]
+        NVS["NVS Storage"]
+    end
+
+    subgraph DRIVERS["🧰 DRIVERS"]
+        CONFIG_DRV["I2C Init
+CH422G Config"]
+        DISPLAY_DRV["Display Driver
+CH422G + RGB"]
+        SENSOR_DRV["Sensor Driver
+Modbus RTU (UART)"]
+        IO_DRV["GPIO Driver
+CH422G IO Expander"]
+    end
+
+    subgraph CORE["🧠 APLICACIÓN"]
+        MAIN["main.c
+Inicialización"]
+        PID["PID Control
+ NVS + SSR"]
+        UPDATE["Actualización OTA
+GitHub + SD"]
+        CHART["Charting
+Historial Temp"]
+    end
+
+    subgraph SCREENS["🧩 PANTALLAS"]
+        BOOT["Boot
+Logo animado"]
+        HOME["Inicio
+PID, Temp, Timer"]
+        SETTINGS["Ajustes
+WiFi, BT, Fecha"]
+        STATS["Estadísticas
+Histórico"]
+        DEV["Modo Dev
+Kp, Ki, Kd"]
+        WIFI_SCREEN["WiFi Setup"]
+        BT_SCREEN["BT Setup"]
+    end
+
+    subgraph COMPONENTS["⚙️ COMPONENTES"]
+        STATUSBAR["Status Bar
+Fecha + Conexión"]
+        HOOKS["Hooks
+Manejadores Eventos"]
+        EVENTS["Eventos UI
+Botones, Transiciones"]
+    end
+
+    subgraph GUI["🖼️ LVGL INTERFAZ"]
+        LVGL_PORT["LVGL Backend
+Render + Touch"]
+        SCREENS
+        COMPONENTS
+    end
+
+    subgraph NET["🌐 RED"]
+        WIFI_MGR["Gestor WiFi
+Scan, Connect, SNTP"]
+        SNTP["Servidor SNTP"]
+    end
+
+    subgraph PROTO["📡 PROTOCOLOS"]
+        MODBUS["Modbus RTU
+Manual"]
+        HTTP["HTTP Client"]
+        JSON["JSON Parser"]
+    end
+
+    subgraph EXT["🔗 SERVICIOS EXTERNOS"]
+        GITHUB["GitHub Releases"]
+    end
+end
+
+%% =====================
+%% 🔌 CONEXIONES Y ESTILO
+%% =====================
+
+%% 🟢 Hardware
+ESP32 --> DISPLAY
+ESP32 --> RS485
+ESP32 --> SDCARD
+ESP32 --> SSR
+RS485 --> PT100
+SSR --> HEATER
+linkStyle 0,1,2,3,4,5 stroke:#6DC36D,stroke-width:2px
+
+%% 🔵 Inicialización
+MAIN --> CONFIG_DRV
+MAIN --> DISPLAY_DRV
+MAIN --> SENSOR_DRV
+MAIN --> PID
+MAIN --> LVGL_PORT
+MAIN --> WIFI_MGR
+MAIN --> FREERTOS
+linkStyle 6,7,8,9,10,11,12 stroke:#4FB0C6,stroke-width:2px
+
+%% 🟣 Funcional
+CONFIG_DRV --> ESP32
+DISPLAY_DRV --> DISPLAY
+SENSOR_DRV --> RS485
+SENSOR_DRV --> MODBUS
+SENSOR_DRV --> FREERTOS
+IO_DRV --> ESP32
+PID --> SSR
+PID --> SENSOR_DRV
+PID --> FREERTOS
+CHART --> SENSOR_DRV
+LVGL_PORT --> DISPLAY_DRV
+LVGL_PORT --> SCREENS
+LVGL_PORT --> COMPONENTS
+linkStyle 13,14,15,16,17,18,19,20,21,25,26,27,28 stroke:#B58DB6,stroke-width:2px
+
+%% 🟡 Memoria
+PID --> NVS
+UPDATE --> SDCARD
+linkStyle 22,23 stroke:#C9AF5D,stroke-width:2px
+
+%% 🟠 Comunicación
+UPDATE --> HTTP
+UPDATE --> JSON
+WIFI_MGR --> WIFI_STACK
+WIFI_MGR --> SNTP
+HTTP --> GITHUB
+linkStyle 24,29,30,34 stroke:#D38F64,stroke-width:2px
+
+%% 🔴 UI Eventos
+HOOKS --> EVENTS
+EVENTS --> PID
+EVENTS --> UPDATE
+STATUSBAR --> WIFI_MGR
+linkStyle 31,32,33,35 stroke:#C86D6D,stroke-width:2px
