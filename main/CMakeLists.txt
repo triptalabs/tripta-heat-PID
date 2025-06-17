@@ -41,6 +41,7 @@ idf_component_register(
         "ui/images/ui_img_arrowicon_1_png.c"
         "ui/images/ui_img_buttonminus_png.c"
         "ui/components/ui_comp_statusbar.c"
+        "ui/components/statusbar_manager.c"
         "ui/components/ui_comp.c"
         "ui/components/ui_comp_hook.c"
     INCLUDE_DIRS 
