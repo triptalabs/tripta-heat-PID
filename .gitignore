@@ -18,6 +18,7 @@
 .vscode/
 *.code-workspace
 .cursorrules
+.cursor/
 
 # 🚫 COSAS QUE NO DEBEN SUBIRSE
 *.log
