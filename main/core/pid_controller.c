@@ -22,6 +22,7 @@
 #include "DEV_Config.h"
 #include "ui_events.h"
 #include "pid_controller.h"
+#include "statistics.h"
 
 // ───────────────────────────────────────────────────────
 // Estructura de configuración
@@ -149,6 +150,9 @@ void activar_ssr(void) {
     CH422G_EnsurePushPullMode();
     CH422G_od_output(0x00);
     pid.ssr_status = true;
+    
+    // Notificar al módulo de estadísticas el cambio de estado
+    statistics_update_ssr_state(true);
 }
 
 /**
@@ -158,6 +162,9 @@ void desactivar_ssr(void) {
     CH422G_EnsurePushPullMode();
     CH422G_od_output(0x02);
     pid.ssr_status = false;
+    
+    // Notificar al módulo de estadísticas el cambio de estado
+    statistics_update_ssr_state(false);
 }
 
 /**

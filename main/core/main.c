@@ -20,6 +20,7 @@
 #include "DEV_Config.h"
 #include "CH422G.h"
 #include "pid_controller.h"
+#include "statistics.h"
 #include "../ui/components/statusbar_manager.h"
 #include <string.h>
 #include <time.h>
@@ -73,6 +74,13 @@ void app_main(void)
         // Inicia tareas principales
         start_temperature_task();
         pid_controller_init(0.0f);
+        
+        // Inicializar módulo de estadísticas
+        if (statistics_init() != ESP_OK) {
+            ESP_LOGE(TAG, "Error al inicializar el módulo de estadísticas");
+        } else {
+            ESP_LOGI(TAG, "Módulo de estadísticas inicializado correctamente");
+        }
 
         lvgl_port_unlock();
     }

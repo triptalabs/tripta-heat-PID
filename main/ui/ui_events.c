@@ -36,6 +36,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include "pid_controller.h"
+#include "../core/statistics.h"
 
 /**
  * @brief Comando para establecer parámetros en el CH422G
@@ -155,6 +156,10 @@ void EncenderPID(lv_event_t *e) {
     float setpoint = lv_arc_get_value(ui_ArcSetTemp);  // Obtiene el setpoint desde la UI
     pid_set_setpoint(setpoint);    
     enable_pid();                    // Lo pasa al controlador                                     // Activa el PID
+    
+    // Iniciar nueva sesión de estadísticas
+    statistics_start_session();
+    
     printf("PID habilitado desde GUI (Setpoint = %.2f°C)\n", setpoint);
 }
 
@@ -166,6 +171,10 @@ void EncenderPID(lv_event_t *e) {
 void ApagarPID(lv_event_t *e) {
     disable_pid();          // Desactiva la lógica PID
     desactivar_ssr();       // 💥 Apaga físicamente el relé (¡clave!)
+    
+    // Finalizar sesión de estadísticas
+    statistics_end_session();
+    
     printf("PID deshabilitado desde GUI\n");
 }
 
