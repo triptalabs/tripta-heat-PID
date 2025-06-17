@@ -247,7 +247,9 @@ esp_err_t wavesahre_rgb_lcd_bl_off()
  * Customizes the appearance of chart items based on their position and value.
  * 
  * @param e Pointer to the LVGL event object.
+ * @note Comentado para evitar warning de función no utilizada
  */
+#if 0  // Función no utilizada - comentada para evitar warnings
 static void draw_event_cb(lv_event_t *e)
 {
     lv_obj_draw_part_dsc_t *dsc = lv_event_get_draw_part_dsc(e);
@@ -268,3 +270,4 @@ static void draw_event_cb(lv_event_t *e)
                                                x_opa + y_opa);
     }
 }
+#endif  // Fin de función comentada

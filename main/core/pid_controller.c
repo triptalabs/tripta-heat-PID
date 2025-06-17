@@ -138,7 +138,6 @@ static PIDController pid = {
 
 // Variables de estado
 static float last_temp = 0.0f;
-static uint8_t stable_cycle_count = 0;
 
 // ───────────────────────────────────────────────────────
 // Control del relé SSR
@@ -265,7 +264,10 @@ static void pid_task(void *pvParameters) {
  * 
  * Oscila el sistema alrededor de un setpoint fijo y calcula los parámetros óptimos Ku y Pu.
  * Luego, calcula nuevos valores de Kp, Ki y Kd.
+ * 
+ * @note Comentado para evitar warning de función no utilizada
  */
+#if 0  // Función no utilizada - comentada para evitar warnings
 static void autotune_task(void *pvParameters) {
     pid.enabled = false;
 
@@ -331,6 +333,7 @@ static void autotune_task(void *pvParameters) {
     pid_set_params(new_kp, new_ki, new_kd);
     vTaskDelete(NULL);
 }
+#endif  // Fin de función comentada
 
 // ───────────────────────────────────────────────────────
 // API pública
