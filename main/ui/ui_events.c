@@ -333,7 +333,8 @@ void TryWifiConn(lv_event_t * e) {
 
 /**
  * @brief Actualiza los parámetros del controlador PID
- * @details Configura los valores de Kp, Ki y Kd del controlador PID
+ * @details Configura los valores de Kp, Ki y Kd del controlador PID con validación
+ *          y actualización de la interfaz visual
  * @param e Puntero al evento que activó la función
  */
 void ActualizarK(lv_event_t * e) {
@@ -341,11 +342,51 @@ void ActualizarK(lv_event_t * e) {
     const char *ki_str = lv_textarea_get_text(ui_TextAreaKi);
     const char *kd_str = lv_textarea_get_text(ui_TextAreaKd);
 
+    // Validación de entrada - verificar que todos los campos tengan valores
+    if (strlen(kp_str) == 0 || strlen(ki_str) == 0 || strlen(kd_str) == 0) {
+        ESP_LOGW(EVENTS_TAG, "Todos los campos Kp, Ki, Kd deben tener valores.");
+        return;
+    }
+
+    // Conversión a float
     float kp = atof(kp_str);
     float ki = atof(ki_str);
     float kd = atof(kd_str);
 
+    // Validación de rangos razonables para parámetros PID
+    if (kp < 0.0f || kp > 100.0f) {
+        ESP_LOGW(EVENTS_TAG, "Kp fuera de rango válido (0.0 - 100.0): %.2f", kp);
+        return;
+    }
+    if (ki < 0.0f || ki > 10.0f) {
+        ESP_LOGW(EVENTS_TAG, "Ki fuera de rango válido (0.0 - 10.0): %.2f", ki);
+        return;
+    }
+    if (kd < 0.0f || kd > 100.0f) {
+        ESP_LOGW(EVENTS_TAG, "Kd fuera de rango válido (0.0 - 100.0): %.2f", kd);
+        return;
+    }
+
+    // Aplicar nuevos parámetros al controlador PID
     pid_set_params(kp, ki, kd);
+
+    // Actualizar etiquetas visuales con los nuevos valores
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "Kp: %.2f", kp);
+    lv_label_set_text(ui_LabelKp, buffer);
+    
+    snprintf(buffer, sizeof(buffer), "Ki: %.2f", ki);
+    lv_label_set_text(ui_LabelKi, buffer);
+    
+    snprintf(buffer, sizeof(buffer), "Kd: %.2f", kd);
+    lv_label_set_text(ui_LabelKd, buffer);
+
+    // Limpiar campos de texto después de aplicar los cambios
+    lv_textarea_set_text(ui_TextAreaKp, "");
+    lv_textarea_set_text(ui_TextAreaKi, "");
+    lv_textarea_set_text(ui_TextAreaKd, "");
+
+    ESP_LOGI(EVENTS_TAG, "Parámetros PID actualizados exitosamente: Kp=%.2f, Ki=%.2f, Kd=%.2f", kp, ki, kd);
 }
 
 /**
