@@ -6,6 +6,10 @@ idf_component_register(
         "core/pid_controller.c"
         "core/wifi_manager.c"
         "core/statistics.c"
+        "bootloader/bootloader_main.c"
+        "bootloader/integrity_checker.c"
+        "bootloader/sd_recovery.c"
+        "bootloader/recovery_mode.c"
         "drivers/io/CH422G.c"
         "drivers/display/waveshare_rgb_lcd_port.c"
         "drivers/sensor/sensor.c"
@@ -49,6 +53,7 @@ idf_component_register(
     INCLUDE_DIRS 
         "."
         "core"
+        "bootloader"
         "drivers/io"
         "drivers/display"
         "drivers/sensor"
@@ -71,6 +76,11 @@ idf_component_register(
         esp_netif
         esp_event
         lwip
+        esp_partition
+        driver
+        mbedtls
+        freertos
+        vfs
 )
 
 # Añadir rutas privadas adicionales

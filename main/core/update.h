@@ -167,6 +167,41 @@ bool update_there_is_update(void);
  */
 void update_clear_flag(void);
 
+/**
+ * @brief Genera hash SHA256 del firmware actual y lo almacena para verificación de integridad.
+ *
+ * Esta función se debe llamar después de una actualización exitosa para que
+ * el bootloader pueda verificar la integridad en el próximo arranque.
+ *
+ * @return
+ * - ESP_OK: Hash generado y almacenado exitosamente.
+ * - ESP_FAIL: Error generando o almacenando el hash.
+ */
+esp_err_t update_generate_integrity_hash(void);
+
+/**
+ * @brief Prepara archivos de recovery en la SD para el bootloader.
+ *
+ * Copia el firmware actual como base_firmware.bin y genera su hash SHA256
+ * para que el bootloader pueda usarlo como firmware de recuperación.
+ *
+ * @return
+ * - ESP_OK: Archivos de recovery preparados exitosamente.
+ * - ESP_FAIL: Error preparando archivos de recovery.
+ */
+esp_err_t update_prepare_recovery_files(void);
+
+/**
+ * @brief Verifica la integridad del firmware actual usando hash SHA256.
+ *
+ * @param[out] integrity_ok Puntero que será true si la integridad es correcta.
+ * @return
+ * - ESP_OK: Verificación completada.
+ * - ESP_FAIL: Error durante la verificación.
+ * - ESP_ERR_INVALID_ARG: Puntero nulo.
+ */
+esp_err_t update_verify_firmware_integrity(bool *integrity_ok);
+
 #ifdef __cplusplus
 }
 #endif
