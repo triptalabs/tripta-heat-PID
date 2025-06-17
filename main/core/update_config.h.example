@@ -2,15 +2,26 @@
  * @file update_config.h.example
  * @brief Ejemplo de configuración para el módulo de actualización OTA
  * 
- * Este archivo sirve como plantilla para crear update_config.h
- * Copiar este archivo a update_config.h y modificar las URLs según sea necesario
+ * IMPORTANTE: Este archivo sirve como plantilla para crear update_config.h
+ * 
+ * PASOS PARA USAR:
+ * 1. Copiar este archivo a update_config.h
+ * 2. Modificar las URLs con las reales del servidor
+ * 3. El archivo update_config.h NO se subirá al repositorio (está en .gitignore)
+ * 
+ * NOTA: Sin este archivo, la compilación FALLARÁ intencionalmente para forzar
+ * la creación de la configuración secreta.
  */
 
 #ifndef UPDATE_CONFIG_H
 #define UPDATE_CONFIG_H
 
-// URLs secretas para actualización OTA
-#define SECRET_FIRMWARE_URL "https://tu-servidor.com/firmware.bin"
-#define SECRET_VERSION_URL "https://tu-servidor.com/version.json"
+// URLs secretas para actualización OTA (CAMBIAR POR LAS REALES)
+#define SECRET_FIRMWARE_URL "https://tu-servidor-secreto.com/firmware.bin"
+#define SECRET_VERSION_URL "https://tu-servidor-secreto.com/version.json"
+
+// Configuraciones adicionales opcionales
+// #define SECRET_API_KEY "tu_api_key_secreto"
+// #define SECRET_SERVER_CERT "certificado_del_servidor"
 
 #endif // UPDATE_CONFIG_H 

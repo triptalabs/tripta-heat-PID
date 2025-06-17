@@ -31,6 +31,18 @@
 #include "driver/sdmmc_defs.h"
 #include "esp_vfs_fat.h"
 
+// Intentar incluir configuración secreta si existe
+#ifdef __has_include
+    #if __has_include("update_config.h")
+        #include "update_config.h"
+        #define HAVE_UPDATE_CONFIG 1
+    #endif
+#else
+    // Fallback para compiladores que no soportan __has_include
+    #include "update_config.h"
+    #define HAVE_UPDATE_CONFIG 1
+#endif
+
 /**
  * @def TAG
  * @brief Etiqueta para los logs del módulo de actualización OTA.
@@ -46,16 +58,6 @@
 #define MOUNT_POINT "/sdcard/"
 
 /**
- * @def FIRMWARE_URL
- * @brief URL fija del firmware más reciente (.bin) alojado en GitHub.
- *
- * Este archivo será descargado por el ESP32 y almacenado en la microSD para luego
- * ser flasheado. Se espera que el archivo tenga el formato compilado binario (.bin)
- * generado por PlatformIO o ESP-IDF.
- */
-#define FIRMWARE_URL "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/lvgl_porting.bin "
-
-/**
  * @def FIRMWARE_VERSION
  * @brief Versión actual del firmware compilado que está corriendo en el dispositivo.
  *
@@ -63,17 +65,6 @@
  * determinar si hay una nueva actualización disponible.
  */
 #define FIRMWARE_VERSION "1.0.0"
-
-/**
- * @def VERSION_URL
- * @brief URL del archivo JSON que contiene la versión más reciente disponible del firmware.
- *
- * Se espera que el contenido del archivo tenga el siguiente formato:
- * @code
- * { "version": "1.0.1" }
- * @endcode
- */
-#define VERSION_URL "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/version.json "
 
 /**
  * @def VERSION_BUFFER_SIZE

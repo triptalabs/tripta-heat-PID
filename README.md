@@ -142,22 +142,22 @@ El dispositivo verifica periódicamente si hay una versión nueva disponible en 
 
 ### Configuración de URLs OTA
 
-Para mantener las URLs de actualización seguras y fuera del repositorio:
+⚠️ **IMPORTANTE**: Las URLs de actualización están OCULTAS del código público por seguridad.
 
-1. Copia el archivo de ejemplo:
+1. **OBLIGATORIO** - Copia el archivo de ejemplo:
    ```bash
    cp main/core/update_config.h.example main/core/update_config.h
    ```
 
-2. Edita `update_config.h` con tus URLs:
+2. Edita `update_config.h` con tus URLs reales:
    ```c
-   #define SECRET_FIRMWARE_URL "https://tu-servidor.com/firmware.bin"
-   #define SECRET_VERSION_URL "https://tu-servidor.com/version.json"
+   #define SECRET_FIRMWARE_URL "https://tu-servidor-real.com/firmware.bin"
+   #define SECRET_VERSION_URL "https://tu-servidor-real.com/version.json"
    ```
 
-3. El archivo `update_config.h` está en `.gitignore` y no se subirá al repositorio.
+3. El archivo `update_config.h` está en `.gitignore` y **NUNCA** se subirá al repositorio.
 
-Si no se configura `update_config.h`, el sistema usará las URLs por defecto definidas en `update.h`.
+**NOTA**: Sin `update_config.h`, la compilación FALLARÁ intencionalmente. Esto fuerza la creación de la configuración secreta y evita que las URLs reales sean visibles en el código público.
 
 ---
 

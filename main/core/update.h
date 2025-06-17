@@ -32,29 +32,36 @@
 extern "C" {
 #endif
 
-// Incluir configuración secreta si existe
-#ifdef UPDATE_CONFIG_H
-#include "update_config.h"
+// Intentar incluir configuración secreta si existe
+#ifdef __has_include
+    #if __has_include("update_config.h")
+        #include "update_config.h"
+        #define HAVE_UPDATE_CONFIG 1
+    #endif
+#else
+    // Fallback para compiladores que no soportan __has_include
+    #include "update_config.h"
+    #define HAVE_UPDATE_CONFIG 1
 #endif
 
 /**
  * @def FIRMWARE_URL_DEFAULT
- * @brief URL por defecto del firmware más reciente (.bin) alojado en GitHub.
+ * @brief URL del firmware más reciente (.bin) - Definida en archivo de configuración.
  */
 #ifdef SECRET_FIRMWARE_URL
 #define FIRMWARE_URL_DEFAULT SECRET_FIRMWARE_URL
 #else
-#define FIRMWARE_URL_DEFAULT "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/lvgl_porting.bin"
+#error "FIRMWARE_URL_DEFAULT no definida. Crear update_config.h con SECRET_FIRMWARE_URL"
 #endif
 
 /**
  * @def VERSION_URL_DEFAULT
- * @brief URL por defecto del archivo JSON que contiene la versión más reciente disponible del firmware.
+ * @brief URL del archivo JSON de versión - Definida en archivo de configuración.
  */
 #ifdef SECRET_VERSION_URL
 #define VERSION_URL_DEFAULT SECRET_VERSION_URL
 #else
-#define VERSION_URL_DEFAULT "https://github.com/triptalabs/firmware-vacuum-oven/releases/latest/download/version.json"
+#error "VERSION_URL_DEFAULT no definida. Crear update_config.h con SECRET_VERSION_URL"
 #endif
 
 /**
