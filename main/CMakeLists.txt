@@ -4,6 +4,7 @@ idf_component_register(
         "core/main.c"
         "core/update.c"
         "core/pid_controller.c"
+        "core/wifi_manager.c"
         "drivers/io/CH422G.c"
         "drivers/display/waveshare_rgb_lcd_port.c"
         "drivers/sensor/sensor.c"
@@ -66,7 +67,9 @@ idf_component_register(
         console
         espressif__esp-modbus
         lvgl__lvgl
-        wifi_manager
+        esp_netif
+        esp_event
+        lwip
 )
 
 # Añadir rutas privadas adicionales
