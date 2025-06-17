@@ -20,6 +20,7 @@
 #include "DEV_Config.h"
 #include "CH422G.h"
 #include "pid_controller.h"
+#include "../ui/components/statusbar_manager.h"
 #include <string.h>
 #include <time.h>
 #include "lvgl.h"
@@ -55,11 +56,19 @@ void app_main(void)
         // Carga interfaz gráfica
         ui_init();
 
-        // Configura WiFi y hora
-        wifi_manager_init(ui_Dropdown1, cui_datetime1);
+        // Inicializar el módulo de gestión de barra de estado
+        statusbar_config_t statusbar_config = statusbar_get_default_config();
+        statusbar_config.time_format = "%d %b %Y   |   %H:%M";
+        statusbar_config.time_update_interval_ms = 60000;  // 1 minuto
+        
+        if (!statusbar_manager_init(ui_STATUSBAR, &statusbar_config)) {
+            ESP_LOGE(TAG, "Error al inicializar el módulo de barra de estado");
+        } else {
+            ESP_LOGI(TAG, "Módulo de barra de estado inicializado correctamente");
+        }
 
-        // Crea temporizador para actualizar hora cada minuto
-        lv_timer_create(actualizar_hora_cb, 60000, NULL);
+        // Configura WiFi (sin pasar cui_datetime1 ya que ahora lo maneja statusbar_manager)
+        wifi_manager_init(ui_Dropdown1, NULL);
 
         // Inicia tareas principales
         start_temperature_task();

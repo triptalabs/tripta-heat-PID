@@ -53,11 +53,11 @@ lv_obj_t *ui_STATUSBAR_create(lv_obj_t *comp_parent)
     lv_obj_clear_flag(cui_Datetime, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); // Desactivar clics y desplazamiento
 
     // Crear la etiqueta para la fecha/hora
-    cui_datetime1 = lv_label_create(cui_Datetime); // Usa la variable global directamente
+    lv_obj_t *cui_datetime1 = lv_label_create(cui_Datetime); // Variable local en lugar de global
     lv_obj_set_width(cui_datetime1, LV_SIZE_CONTENT); // Ancho ajustado al contenido
     lv_obj_set_height(cui_datetime1, LV_SIZE_CONTENT); // Altura ajustada al contenido
     lv_obj_set_align(cui_datetime1, LV_ALIGN_CENTER); // Alinear al centro
-    lv_label_set_text(cui_datetime1, "18 mar 2025   |   10:35 AM"); // Texto inicial
+    lv_label_set_text(cui_datetime1, "18 mar 2025   |   10:35 AM"); // Texto inicial (será actualizado por statusbar_manager)
     lv_obj_set_style_text_color(cui_datetime1, lv_color_hex(0xEEEEEE), LV_PART_MAIN | LV_STATE_DEFAULT); // Color del texto
     lv_obj_set_style_text_opa(cui_datetime1, 255, LV_PART_MAIN | LV_STATE_DEFAULT); // Opacidad del texto
     lv_obj_set_style_text_font(cui_datetime1, &lv_font_montserrat_22, LV_PART_MAIN | LV_STATE_DEFAULT); // Fuente del texto

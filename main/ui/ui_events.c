@@ -68,15 +68,13 @@ extern lv_obj_t * ui_RollerMes;
 extern lv_obj_t * ui_RollerDia;
 extern lv_obj_t * ui_RollerHora;
 extern lv_obj_t * ui_RollerMinuto;
-extern lv_obj_t * cui_datetime1;
-
 /**
  * @brief Etiqueta para los mensajes de log de eventos
  */
 static const char *EVENTS_TAG = "Events";
 
 /**
- * @brief Variables para almacenar la fecha y hora
+ * @brief Variables para almacenar la fecha y hora (mantenidas por compatibilidad con el diálogo de configuración)
  */
 static int anio = 2024;
 static int mes = 1;
@@ -285,10 +283,9 @@ void CambiarFechaHora(lv_event_t * e) {
     struct timeval now = { .tv_sec = epoch };
     settimeofday(&now, NULL);  // 🕐 Aquí se actualiza el reloj del sistema
 
-    // También actualiza la barra de estado
-    char buffer[32];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d  %H:%M", &t);
-    lv_label_set_text(cui_datetime1, buffer);
+    // La actualización de la barra de estado ahora se gestiona automáticamente
+    // por el módulo statusbar_manager
+    ESP_LOGI(EVENTS_TAG, "La hora del sistema ha sido actualizada. El statusbar_manager la mostrará automáticamente.");
 }
 
 /**
@@ -360,23 +357,15 @@ void ui_actualizar_estado_pid(float temperatura, bool heating_on) {
 }
 
 /**
- * @brief Callback para actualizar la hora en la interfaz
- * @details Actualiza la hora mostrada en la interfaz cada segundo
+ * @brief Callback para actualizar la hora en la interfaz (DEPRECATED)
+ * @details Esta función ha sido reemplazada por el módulo statusbar_manager.
+ *          Se mantiene por compatibilidad pero no debería usarse en código nuevo.
  * @param timer Puntero al temporizador que activó la función
+ * @deprecated Usar statusbar_manager en su lugar
  */
 void actualizar_hora_cb(lv_timer_t *timer) {
-    time_t now;
-    struct tm timeinfo;
-    char buffer[32];
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-
-    if (timeinfo.tm_year > 70) {
-        strftime(buffer, sizeof(buffer), "%Y-%m-%d  %H:%M", &timeinfo);
-        lv_label_set_text(cui_datetime1, buffer);
-    } else {
-        lv_label_set_text(cui_datetime1, "Sin hora");
-    }
+    ESP_LOGW(EVENTS_TAG, "actualizar_hora_cb está deprecada. Use statusbar_manager en su lugar.");
+    // Esta función ya no hace nada, la gestión de hora se maneja en statusbar_manager
+    (void)timer; // Suprimir warning
 }
 
