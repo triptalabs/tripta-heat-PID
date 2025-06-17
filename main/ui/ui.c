@@ -744,9 +744,30 @@ void ui_event_BtnStats(lv_event_t * e)
 void ui_event_ImgLogoFootbar(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
-
+    static int devmode_click_count = 0;
+    static uint32_t last_click_time = 0;
+    
     if(event_code == LV_EVENT_CLICKED) {
-        _ui_screen_change(&ui_Devmode, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, &ui_Devmode_screen_init);
+        uint32_t current_time = lv_tick_get();
+        
+        // Si han pasado más de 3 segundos desde el último click, reiniciar contador
+        if(current_time - last_click_time > 3000) {
+            devmode_click_count = 0;
+        }
+        
+        devmode_click_count++;
+        last_click_time = current_time;
+        
+        // Debug: mostrar progreso de clicks (opcional, se puede remover en producción)
+        #ifdef DEBUG_DEVMODE
+        printf("DevMode click %d/5\n", devmode_click_count);
+        #endif
+        
+        if(devmode_click_count >= 5) {
+            // Acceder al modo desarrollo después de 5 clicks
+            _ui_screen_change(&ui_Devmode, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, &ui_Devmode_screen_init);
+            devmode_click_count = 0; // Reiniciar contador
+        }
     }
 }
 
