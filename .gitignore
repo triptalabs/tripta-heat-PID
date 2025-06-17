@@ -17,6 +17,7 @@
 # 💻 CONFIGURACIÓN DE VS CODE
 .vscode/
 *.code-workspace
+.cursorrules
 
 # 🚫 COSAS QUE NO DEBEN SUBIRSE
 *.log
