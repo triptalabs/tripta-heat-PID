@@ -1,4 +1,5 @@
 SET(SOURCES components/ui_comp_statusbar.c
+    components/statusbar_manager.c
     components/ui_comp.c
     screens/ui_ScreenBootlogo.c
     screens/ui_ScreenHome.c

@@ -17,7 +17,8 @@ extern "C" {
 #include "components/ui_comp_hook.h"
 #include "ui_events.h"
 
-extern lv_obj_t *cui_datetime1;  // Añade esta línea al final de tus externs
+// Variable cui_datetime1 eliminada - ahora se gestiona por statusbar_manager
+// extern lv_obj_t *cui_datetime1;
 extern lv_chart_series_t *ui_Chart_series_1;
 extern lv_coord_t ui_Chart_series_1_array[240];
 

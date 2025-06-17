@@ -96,12 +96,13 @@ esp_err_t wifi_manager_init(lv_obj_t *dropdown, lv_obj_t *datetime_label) {
         if (datetime_label != NULL) {
             lv_label_set_text(datetime_label, datetime_str);
         }
-        ESP_LOGI(TAG, "Hora actualizada: %s", datetime_str);
+        ESP_LOGI(TAG, "Hora sincronizada via SNTP: %s", datetime_str);
+        ESP_LOGI(TAG, "La hora será gestionada por el módulo statusbar_manager");
     } else {
         if (datetime_label != NULL) {
             lv_label_set_text(datetime_label, "Sin hora");
         }
-        ESP_LOGW(TAG, "No se pudo sincronizar la hora.");
+        ESP_LOGW(TAG, "No se pudo sincronizar la hora via SNTP.");
     }
 
     ESP_LOGI(TAG, "WiFi y hora configurados correctamente.");

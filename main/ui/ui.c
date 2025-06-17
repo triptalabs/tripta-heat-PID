@@ -6,7 +6,8 @@
 #include "ui.h"
 #include "ui_helpers.h"
 
-lv_obj_t *cui_datetime1 = NULL;
+// Variable cui_datetime1 eliminada - ahora se gestiona por statusbar_manager
+// lv_obj_t *cui_datetime1 = NULL;
 
 
 ///////////////////// VARIABLES ////////////////////

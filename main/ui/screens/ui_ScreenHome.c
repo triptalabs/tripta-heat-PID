@@ -527,6 +527,8 @@ void ui_ScreenHome_screen_init(void)
     lv_obj_add_event_cb(ui_BtnAjustes, ui_event_BtnAjustes, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_BtnStats, ui_event_BtnStats, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_ImgLogoFootbar, ui_event_ImgLogoFootbar, LV_EVENT_ALL, NULL);
-    uic_Datetime = ui_comp_get_child(ui_STATUSBAR, UI_COMP_STATUSBAR_DATETIME);
+    
+    // La gestión de fecha/hora ahora se maneja por statusbar_manager
+    // uic_Datetime = ui_comp_get_child(ui_STATUSBAR, UI_COMP_STATUSBAR_DATETIME);
 
 }
