@@ -73,14 +73,6 @@ extern lv_obj_t * ui_RollerMinuto;
  */
 static const char *EVENTS_TAG = "Events";
 
-/**
- * @brief Variables para almacenar la fecha y hora (mantenidas por compatibilidad con el diálogo de configuración)
- */
-static int anio = 2024;
-static int mes = 1;
-static int dia = 1;
-static int hora = 0;
-static int minuto = 0;
 
 /**
  * @brief Timer LVGL para el control de minutos
@@ -245,8 +237,11 @@ void CambiarNombreBT(lv_event_t *e)
         return;
     }
 
-    // Actualizar el nombre del dispositivo Bluetooth
+    // Actualizar el nombre del dispositivo Bluetooth (suprimiendo warning deprecated)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     esp_err_t ret = esp_bt_dev_set_device_name(new_bt_name);
+    #pragma GCC diagnostic pop
     if (ret == ESP_OK) {
         ESP_LOGI(EVENTS_TAG, "Nombre Bluetooth actualizado a: %s", new_bt_name);
     } else {
