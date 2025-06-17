@@ -224,10 +224,7 @@
  */
 #define EXAMPLE_PIN_NUM_TOUCH_INT       (-1)
 
-/**
- * @brief Tag used for logging.
- */
-static const char *TAG = "example";
+
 
 /**
  * @brief Funciones de control de la pantalla LCD
