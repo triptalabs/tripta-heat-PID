@@ -225,6 +225,7 @@ extern lv_obj_t * ui_TecladoWF;
 
 // SCREEN: ui_ScreenEstadisticas
 void ui_ScreenEstadisticas_screen_init(void);
+void ui_update_statistics(void);
 extern lv_obj_t * ui_ScreenEstadisticas;
 extern lv_obj_t * ui_Label26;
 extern lv_obj_t * ui_Label3;

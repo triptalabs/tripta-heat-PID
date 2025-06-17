@@ -18,6 +18,10 @@
 // Project name: UI_draft
 
 #include "../ui.h"
+#include "../../core/statistics.h"
+#include "esp_log.h"
+
+#define TAG "UI_STATS"
 
 /**
  * @brief Inicializa la pantalla de estadísticas
@@ -92,4 +96,46 @@ void ui_ScreenEstadisticas_screen_init(void)
      * @brief Configura el callback de eventos para el botón de retorno
      */
     lv_obj_add_event_cb(ui_BtnStatsGoHome, ui_event_BtnStatsGoHome, LV_EVENT_ALL, NULL);
+    
+    // Actualizar estadísticas al inicializar la pantalla
+    ui_update_statistics();
+}
+
+/**
+ * @brief Actualiza la pantalla de estadísticas con datos reales del backend
+ * @details Esta función obtiene las estadísticas actuales del módulo de estadísticas
+ *          y actualiza la interfaz de usuario con los valores reales
+ */
+void ui_update_statistics(void)
+{
+    ESP_LOGI(TAG, "Actualizando estadísticas en la pantalla");
+    
+    // Obtener estadísticas formateadas
+    statistics_formatted_t formatted_stats;
+    esp_err_t ret = statistics_get_formatted(&formatted_stats);
+    
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error al obtener estadísticas: %s", esp_err_to_name(ret));
+        
+        // Mostrar mensaje de error en la UI
+        lv_label_set_text(ui_Label3, "Error al cargar estadísticas\nVerifique el sistema");
+        return;
+    }
+    
+    // Crear cadena de texto con las estadísticas formateadas
+    char stats_text[256];
+    snprintf(stats_text, sizeof(stats_text),
+             "Tiempo total de operación: %s\n"
+             "Tiempo neto de calentamiento: %s\n"
+             "Número de ciclos del SSR: %s\n"
+             "Número total de sesiones: %s\n",
+             formatted_stats.total_operation_time,
+             formatted_stats.total_heating_time,
+             formatted_stats.ssr_cycle_count,
+             formatted_stats.total_sessions);
+    
+    // Actualizar el label con las estadísticas reales
+    lv_label_set_text(ui_Label3, stats_text);
+    
+    ESP_LOGI(TAG, "Estadísticas actualizadas correctamente");
 }
