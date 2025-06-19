@@ -6,6 +6,7 @@ idf_component_register(
         "core/pid_controller.c"
         "core/wifi_manager.c"
         "core/statistics.c"
+        "core/system_test.c"
         "bootloader/bootloader_main.c"
         "bootloader/integrity_checker.c"
         "bootloader/sd_recovery.c"

@@ -76,6 +76,11 @@ esp_err_t pid_save_params(void);
 esp_err_t pid_load_params(void);
 
 /**
+ * @brief Activa físicamente el relé SSR.
+ */
+void activar_ssr(void);
+
+/**
  * @brief Desactiva físicamente el relé SSR.
  */
 void desactivar_ssr(void);

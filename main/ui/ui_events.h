@@ -119,6 +119,12 @@ void actualizar_hora_cb(lv_timer_t *timer);
  */
 void ui_actualizar_estado_pid(float temperatura, bool heating_on);
 
+/**
+ * @brief Ejecuta el test del sistema y actualiza la UI con los resultados
+ * @param e Puntero al evento que activó la función
+ */
+void RunSystemTest(lv_event_t * e);
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

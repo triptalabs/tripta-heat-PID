@@ -5,6 +5,7 @@ idf_component_register(
         "pid_controller.c"
         "wifi_manager.c"
         "statistics.c"
+        "system_test.c"
     INCLUDE_DIRS "."
     REQUIRES 
         driver
