@@ -37,6 +37,7 @@
 #include <time.h>
 #include "pid_controller.h"
 #include "../core/statistics.h"
+#include "system_test.h"
 
 /**
  * @brief Comando para establecer parámetros en el CH422G
@@ -399,6 +400,41 @@ void ui_actualizar_estado_pid(float temperatura, bool heating_on) {
     static char buffer[64];
     snprintf(buffer, sizeof(buffer), "%.1f°C\nTemperatura", temperatura);
     lv_label_set_text(ui_editLabelGetStatus, buffer);
+}
+
+/**
+ * @brief Ejecuta el test del sistema y actualiza la UI con los resultados
+ * @details Ejecuta las pruebas de sensor y SSR, y muestra los resultados
+ *          formateados en el label de la interfaz
+ * @param e Puntero al evento que activó la función
+ */
+void RunSystemTest(lv_event_t *e) {
+    ESP_LOGI(EVENTS_TAG, "Iniciando test del sistema desde UI...");
+    
+    // Mostrar mensaje de "Ejecutando test..." en la UI
+    lv_label_set_text(ui_LabelEditTestResult, "Ejecutando test del sistema...\n\nPor favor espere.");
+    
+    // Forzar actualización de la UI
+    lv_task_handler();
+    
+    // Buffer para almacenar los resultados del test
+    static char test_result_buffer[SYSTEM_TEST_RESULT_MAX_LEN];
+    
+    // Ejecutar el test del sistema
+    esp_err_t test_result = system_test_run_quick(test_result_buffer, sizeof(test_result_buffer));
+    
+    if (test_result == ESP_OK) {
+        ESP_LOGI(EVENTS_TAG, "Test del sistema completado exitosamente");
+        // Actualizar la UI con los resultados del test
+        lv_label_set_text(ui_LabelEditTestResult, test_result_buffer);
+    } else {
+        ESP_LOGE(EVENTS_TAG, "Error ejecutando test del sistema: %s", esp_err_to_name(test_result));
+        // Mostrar mensaje de error en la UI
+        lv_label_set_text(ui_LabelEditTestResult, 
+                          "Error ejecutando test del sistema.\n\n"
+                          "Verifique las conexiones\n"
+                          "e intente nuevamente.");
+    }
 }
 
 /**
