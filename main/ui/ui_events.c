@@ -29,6 +29,7 @@
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_err.h"
+#include "../core/bt.h"
 #include "update.h"
 #include <math.h>
 #include "driver/gpio.h"
@@ -138,6 +139,16 @@ void ApagarWifi(lv_event_t * e)
  * @param e Puntero al evento que activó la función
  */
 void EncenderBt(lv_event_t * e) {
+    ESP_LOGI(EVENTS_TAG, "Usuario solicitó encender Bluetooth desde UI");
+    
+    esp_err_t ret = bt_start();
+    if (ret == ESP_OK) {
+        ESP_LOGI(EVENTS_TAG, "Bluetooth iniciado exitosamente desde UI");
+        // TODO: Actualizar indicador visual en UI cuando esté disponible
+    } else {
+        ESP_LOGE(EVENTS_TAG, "Error al iniciar Bluetooth desde UI: %s", esp_err_to_name(ret));
+        // TODO: Mostrar mensaje de error en UI cuando esté disponible
+    }
 }
 
 /**
@@ -145,7 +156,16 @@ void EncenderBt(lv_event_t * e) {
  * @param e Puntero al evento que activó la función
  */
 void ApagarBt(lv_event_t * e) {
-    // TODO: Implementar
+    ESP_LOGI(EVENTS_TAG, "Usuario solicitó apagar Bluetooth desde UI");
+    
+    esp_err_t ret = bt_stop();
+    if (ret == ESP_OK) {
+        ESP_LOGI(EVENTS_TAG, "Bluetooth detenido exitosamente desde UI");
+        // TODO: Actualizar indicador visual en UI cuando esté disponible
+    } else {
+        ESP_LOGE(EVENTS_TAG, "Error al detener Bluetooth desde UI: %s", esp_err_to_name(ret));
+        // TODO: Mostrar mensaje de error en UI cuando esté disponible
+    }
 }
 
 /**
@@ -243,19 +263,20 @@ void CambiarNombreBT(lv_event_t *e)
 {
     const char *new_bt_name = lv_textarea_get_text(ui_nombrebt);
     if (!new_bt_name || strlen(new_bt_name) == 0) {
-        ESP_LOGW(EVENTS_TAG, "No se proporcionó un nombre válido para Bluetooth.");
+        ESP_LOGW(EVENTS_TAG, "No se proporcionó un nombre válido para Bluetooth desde UI.");
         return;
     }
 
-    // Actualizar el nombre del dispositivo Bluetooth (suprimiendo warning deprecated)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    esp_err_t ret = esp_bt_dev_set_device_name(new_bt_name);
-    #pragma GCC diagnostic pop
+    ESP_LOGI(EVENTS_TAG, "Usuario solicitó cambiar nombre Bluetooth a: '%s' desde UI", new_bt_name);
+
+    // Usar el módulo BT en lugar de código hardcodeado
+    esp_err_t ret = bt_set_device_name(new_bt_name);
     if (ret == ESP_OK) {
-        ESP_LOGI(EVENTS_TAG, "Nombre Bluetooth actualizado a: %s", new_bt_name);
+        ESP_LOGI(EVENTS_TAG, "Nombre Bluetooth actualizado exitosamente desde UI: %s", new_bt_name);
+        // TODO: Mostrar confirmación en UI cuando esté disponible
     } else {
-        ESP_LOGE(EVENTS_TAG, "Error al cambiar el nombre Bluetooth: %s", esp_err_to_name(ret));
+        ESP_LOGE(EVENTS_TAG, "Error al cambiar nombre Bluetooth desde UI: %s", esp_err_to_name(ret));
+        // TODO: Mostrar mensaje de error en UI cuando esté disponible
     }
 }
 
