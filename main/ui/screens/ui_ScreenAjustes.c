@@ -15,6 +15,7 @@
 // Project name: UI_draft
 
 #include "../ui.h"
+#include "../../core/system_time.h"
 
 /**
  * @brief Inicializa la pantalla de ajustes
@@ -353,98 +354,21 @@ void ui_ScreenAjustes_screen_init(void)
     lv_label_set_text(ui_Label21, "Seleccione la fecha y hora actual:");
     lv_obj_set_style_text_font(ui_Label21, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_ContainerDia = lv_obj_create(ui_ContainerFecha);
-    lv_obj_remove_style_all(ui_ContainerDia);
-    lv_obj_set_width(ui_ContainerDia, 100);
-    lv_obj_set_height(ui_ContainerDia, 150);
-    lv_obj_set_align(ui_ContainerDia, LV_ALIGN_CENTER);
-    lv_obj_set_flex_flow(ui_ContainerDia, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(ui_ContainerDia, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_ContainerDia, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_pad_row(ui_ContainerDia, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_column(ui_ContainerDia, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_LabelFechaDia = lv_label_create(ui_ContainerDia);
-    lv_obj_set_width(ui_LabelFechaDia, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_LabelFechaDia, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_align(ui_LabelFechaDia, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelFechaDia, "Día:");
-
-    ui_RollerDia = lv_roller_create(ui_ContainerDia);
-    lv_roller_set_options(ui_RollerDia,
-                          "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n",
-                          LV_ROLLER_MODE_NORMAL);
-    lv_roller_set_selected(ui_RollerDia, 2, LV_ANIM_OFF);
-    lv_obj_set_width(ui_RollerDia, 86);
-    lv_obj_set_height(ui_RollerDia, 86);
-    lv_obj_set_x(ui_RollerDia, -18);
-    lv_obj_set_y(ui_RollerDia, -33);
-    lv_obj_set_align(ui_RollerDia, LV_ALIGN_TOP_RIGHT);
-
-    lv_obj_set_style_bg_color(ui_RollerDia, lv_color_hex(0x4682B4), LV_PART_SELECTED | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RollerDia, 255, LV_PART_SELECTED | LV_STATE_DEFAULT);
-
-    ui_ContainerMes = lv_obj_create(ui_ContainerFecha);
-    lv_obj_remove_style_all(ui_ContainerMes);
-    lv_obj_set_width(ui_ContainerMes, 100);
-    lv_obj_set_height(ui_ContainerMes, 150);
-    lv_obj_set_align(ui_ContainerMes, LV_ALIGN_CENTER);
-    lv_obj_set_flex_flow(ui_ContainerMes, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(ui_ContainerMes, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_ContainerMes, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_pad_row(ui_ContainerMes, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_column(ui_ContainerMes, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_LabelFechaMes = lv_label_create(ui_ContainerMes);
-    lv_obj_set_width(ui_LabelFechaMes, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_LabelFechaMes, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_align(ui_LabelFechaMes, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelFechaMes, "Mes:");
-
-    ui_RollerMes = lv_roller_create(ui_ContainerMes);
-    lv_roller_set_options(ui_RollerMes, "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12", LV_ROLLER_MODE_NORMAL);
-    lv_roller_set_selected(ui_RollerMes, 2, LV_ANIM_OFF);
-    lv_obj_set_width(ui_RollerMes, 86);
-    lv_obj_set_height(ui_RollerMes, 86);
-    lv_obj_set_x(ui_RollerMes, -18);
-    lv_obj_set_y(ui_RollerMes, -33);
-    lv_obj_set_align(ui_RollerMes, LV_ALIGN_TOP_RIGHT);
-
-    lv_obj_set_style_bg_color(ui_RollerMes, lv_color_hex(0x4682B4), LV_PART_SELECTED | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RollerMes, 255, LV_PART_SELECTED | LV_STATE_DEFAULT);
-
-    ui_ContainerAnio = lv_obj_create(ui_ContainerFecha);
-    lv_obj_remove_style_all(ui_ContainerAnio);
-    lv_obj_set_width(ui_ContainerAnio, 100);
-    lv_obj_set_height(ui_ContainerAnio, 150);
-    lv_obj_set_align(ui_ContainerAnio, LV_ALIGN_CENTER);
-    lv_obj_set_flex_flow(ui_ContainerAnio, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(ui_ContainerAnio, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_ContainerAnio, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_pad_row(ui_ContainerAnio, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_column(ui_ContainerAnio, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_LabelFechaAnio = lv_label_create(ui_ContainerAnio);
-    lv_obj_set_width(ui_LabelFechaAnio, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_LabelFechaAnio, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_align(ui_LabelFechaAnio, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelFechaAnio, "Año:");
-
-    ui_RollerAnio = lv_roller_create(ui_ContainerAnio);
-    lv_roller_set_options(ui_RollerAnio,
-                          "2025\n2026\n2027\n2028\n2029\n2031\n2032\n2033\n2034\n2035\n2036\n2037\n2038\n2039\n2040\n2041\n2042\n2043\n2044\n2045\n2046\n2047\n2048\n2049\n2050\n\n",
-                          LV_ROLLER_MODE_NORMAL);
-    lv_roller_set_selected(ui_RollerAnio, 2, LV_ANIM_OFF);
-    lv_obj_set_width(ui_RollerAnio, 86);
-    lv_obj_set_height(ui_RollerAnio, 86);
-    lv_obj_set_x(ui_RollerAnio, -18);
-    lv_obj_set_y(ui_RollerAnio, -33);
-    lv_obj_set_align(ui_RollerAnio, LV_ALIGN_TOP_RIGHT);
-    lv_obj_set_style_bg_color(ui_RollerAnio, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RollerAnio, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_set_style_bg_color(ui_RollerAnio, lv_color_hex(0x4682B4), LV_PART_SELECTED | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_RollerAnio, 255, LV_PART_SELECTED | LV_STATE_DEFAULT);
+    /**
+     * @brief Crea el calendario para selección de fecha
+     * @details Reemplaza los rollers de día, mes y año por un calendario visual
+     */
+    ui_Calendar2 = lv_calendar_create(ui_ContainerFecha);
+    lv_obj_set_width(ui_Calendar2, 351);
+    lv_obj_set_height(ui_Calendar2, 335);
+    lv_obj_set_x(ui_Calendar2, 6);
+    lv_obj_set_y(ui_Calendar2, -40);
+    lv_obj_set_align(ui_Calendar2, LV_ALIGN_CENTER);
+    lv_obj_set_style_radius(ui_Calendar2, 20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    
+    // Configurar fecha inicial del calendario
+    lv_calendar_set_today_date(ui_Calendar2, 2025, 6, 25);
+    lv_calendar_set_showed_date(ui_Calendar2, 2025, 6);
 
     ui_ContainerHora = lv_obj_create(ui_ContainerFecha);
     lv_obj_remove_style_all(ui_ContainerHora);
@@ -717,4 +641,102 @@ void ui_ScreenAjustes_screen_init(void)
     lv_obj_add_event_cb(ui_Cancelarboton, ui_event_Cancelarboton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_Actualiarboton, ui_event_Actualiarboton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_LabelEditTestResult, ui_event_LabelEditTestResult, LV_EVENT_ALL, NULL);
+    
+    // Inicializar calendario con fecha actual del sistema
+    init_calendar_with_system_time();
+    
+    // Inicializar rollers de hora con tiempo actual del sistema
+    init_time_rollers_with_system_time();
+}
+
+/**
+ * @brief Inicializa el calendario con la fecha actual del sistema
+ */
+void init_calendar_with_system_time(void) {
+    system_datetime_t current_time;
+    system_time_get(&current_time);
+    
+    // Configurar calendario con fecha actual
+    lv_calendar_set_today_date(ui_Calendar2, current_time.year, current_time.month, current_time.day);
+    lv_calendar_set_showed_date(ui_Calendar2, current_time.year, current_time.month);
+    
+    // Agregar event handler para cuando se seleccione una fecha
+    lv_obj_add_event_cb(ui_Calendar2, calendar_date_changed_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+}
+
+/**
+ * @brief Inicializa los rollers de hora con el tiempo actual del sistema
+ */
+void init_time_rollers_with_system_time(void) {
+    system_datetime_t current_time;
+    system_time_get(&current_time);
+    
+    // Configurar roller de hora
+    if (ui_RollerHora) {
+        lv_roller_set_selected(ui_RollerHora, current_time.hour, LV_ANIM_OFF);
+        lv_obj_add_event_cb(ui_RollerHora, time_roller_changed_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    }
+    
+    // Configurar roller de minuto
+    if (ui_RollerMinuto) {
+        lv_roller_set_selected(ui_RollerMinuto, current_time.minute, LV_ANIM_OFF);
+        lv_obj_add_event_cb(ui_RollerMinuto, time_roller_changed_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    }
+}
+
+/**
+ * @brief Callback cuando se cambia la fecha en el calendario
+ */
+void calendar_date_changed_event_cb(lv_event_t * e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * obj = lv_event_get_target(e);
+    
+    if (code == LV_EVENT_VALUE_CHANGED) {
+        lv_calendar_date_t date;
+        lv_res_t res = lv_calendar_get_pressed_date(obj, &date);
+        if (res == LV_RES_OK) {
+            // Actualizar solo la fecha en la variable global, manteniendo la hora
+            g_system_datetime.year = date.year;
+            g_system_datetime.month = date.month;
+            g_system_datetime.day = date.day;
+            
+            ESP_LOGI("UI_CALENDAR", "Fecha seleccionada: %04d-%02d-%02d", 
+                     date.year, date.month, date.day);
+        }
+    }
+}
+
+/**
+ * @brief Callback cuando se cambian los rollers de hora/minuto
+ */
+void time_roller_changed_event_cb(lv_event_t * e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * obj = lv_event_get_target(e);
+    
+    if (code == LV_EVENT_VALUE_CHANGED) {
+        uint16_t selected = lv_roller_get_selected(obj);
+        
+        if (obj == ui_RollerHora) {
+            g_system_datetime.hour = selected;
+            ESP_LOGI("UI_TIME", "Hora seleccionada: %02d", selected);
+        } else if (obj == ui_RollerMinuto) {
+            g_system_datetime.minute = selected;
+            ESP_LOGI("UI_TIME", "Minuto seleccionado: %02d", selected);
+        }
+    }
+}
+
+/**
+ * @brief Aplica los cambios de fecha y hora del UI al sistema
+ */
+void apply_datetime_changes_to_system(void) {
+    // Configurar segundos a 0 cuando se aplican cambios manuales
+    g_system_datetime.second = 0;
+    
+    // Aplicar los cambios al sistema
+    system_time_set(&g_system_datetime);
+    
+    ESP_LOGI("UI_DATETIME", "Fecha y hora aplicada al sistema: %04d-%02d-%02d %02d:%02d:%02d",
+             g_system_datetime.year, g_system_datetime.month, g_system_datetime.day,
+             g_system_datetime.hour, g_system_datetime.minute, g_system_datetime.second);
 }

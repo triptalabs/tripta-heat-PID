@@ -125,6 +125,33 @@ void ui_actualizar_estado_pid(float temperatura, bool heating_on);
  */
 void RunSystemTest(lv_event_t * e);
 
+/**
+ * @brief Inicializa el calendario con la fecha actual del sistema
+ */
+void init_calendar_with_system_time(void);
+
+/**
+ * @brief Inicializa los rollers de hora con el tiempo actual del sistema
+ */
+void init_time_rollers_with_system_time(void);
+
+/**
+ * @brief Callback cuando se cambia la fecha en el calendario
+ * @param e Puntero al evento
+ */
+void calendar_date_changed_event_cb(lv_event_t * e);
+
+/**
+ * @brief Callback cuando se cambian los rollers de hora/minuto
+ * @param e Puntero al evento
+ */
+void time_roller_changed_event_cb(lv_event_t * e);
+
+/**
+ * @brief Aplica los cambios de fecha y hora del UI al sistema
+ */
+void apply_datetime_changes_to_system(void);
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

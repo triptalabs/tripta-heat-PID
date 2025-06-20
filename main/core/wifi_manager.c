@@ -11,6 +11,7 @@
 #include "esp_event.h"
 #include "lwip/apps/sntp.h"
 #include "lvgl.h"
+#include "system_time.h"
 #include <string.h>
 #include <time.h>
 
@@ -71,39 +72,14 @@ esp_err_t wifi_manager_init(lv_obj_t *dropdown, lv_obj_t *datetime_label) {
         ESP_LOGI(TAG, "Redes actualizadas en el dropdown.");
     }
 
-    // Configura zona horaria manualmente (Colombia UTC-5)
-    setenv("TZ", "COT5", 1);
-    tzset();
-
-    // Configura SNTP
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_setservername(1, "time.nist.gov");
-    sntp_init();
-
-    vTaskDelay(pdMS_TO_TICKS(2000));  // Espera para sincronizar
-
-    // Obtiene hora local y la muestra
-    time_t now;
-    struct tm timeinfo;
-    char datetime_str[64];
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-
-    if (timeinfo.tm_year > 70) {
-        strftime(datetime_str, sizeof(datetime_str), "%Y-%m-%d %H:%M", &timeinfo);
-        if (datetime_label != NULL) {
-            lv_label_set_text(datetime_label, datetime_str);
-        }
-        ESP_LOGI(TAG, "Hora sincronizada via SNTP: %s", datetime_str);
-        ESP_LOGI(TAG, "La hora será gestionada por el módulo statusbar_manager");
-    } else {
-        if (datetime_label != NULL) {
-            lv_label_set_text(datetime_label, "Sin hora");
-        }
-        ESP_LOGW(TAG, "No se pudo sincronizar la hora via SNTP.");
-    }
+    // Usar el nuevo sistema de tiempo para sincronización automática
+    ESP_LOGI(TAG, "Sincronizando tiempo con la red usando el nuevo sistema...");
+    system_time_update_from_network();
+    
+    // Iniciar timer de actualización automática
+    system_time_start_auto_update();
+    
+    ESP_LOGI(TAG, "Sistema de tiempo integrado con WiFi completado");
 
     ESP_LOGI(TAG, "WiFi y hora configurados correctamente.");
     return ESP_OK;
