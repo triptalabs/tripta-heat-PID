@@ -24,6 +24,7 @@
 #include "../ui/components/statusbar_manager.h"
 #include "bootloader_main.h"
 #include "update.h"
+#include "system_time.h"
 #include <string.h>
 #include <time.h>
 #include "lvgl.h"
@@ -91,6 +92,9 @@ void app_main(void)
      * conflictos con otras tareas que acceden a LVGL
      */
     if (lvgl_port_lock(-1)) {
+        // Inicializar sistema de tiempo antes de cargar la interfaz
+        system_time_init();
+        
         // Carga interfaz gráfica
         ui_init();
 

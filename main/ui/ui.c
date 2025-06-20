@@ -148,6 +148,7 @@ void ui_event_ContainerFecha(lv_event_t * e);
 lv_obj_t * ui_ContainerFecha;
 lv_obj_t * ui_DisclaimerFecha;
 lv_obj_t * ui_Label21;
+lv_obj_t * ui_Calendar2;
 lv_obj_t * ui_ContainerDia;
 lv_obj_t * ui_LabelFechaDia;
 lv_obj_t * ui_RollerDia;

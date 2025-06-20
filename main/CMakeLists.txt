@@ -7,6 +7,7 @@ idf_component_register(
         "core/wifi_manager.c"
         "core/statistics.c"
         "core/system_test.c"
+        "core/system_time.c"
         "core/bt.c"
         "bootloader/bootloader_main.c"
         "bootloader/integrity_checker.c"

@@ -39,6 +39,7 @@
 #include "pid_controller.h"
 #include "../core/statistics.h"
 #include "system_test.h"
+#include "../core/system_time.h"
 
 /**
  * @brief Comando para establecer parámetros en el CH422G
@@ -281,37 +282,15 @@ void CambiarNombreBT(lv_event_t *e)
 }
 
 /**
- * @brief Actualiza la fecha y hora del sistema
- * @details Configura la fecha y hora del sistema con los valores seleccionados
+ * @brief Actualiza la fecha y hora del sistema usando el nuevo sistema
+ * @details Aplica los cambios recopilados desde el calendario y rollers al sistema
  * @param e Puntero al evento que activó la función
  */
 void CambiarFechaHora(lv_event_t * e) {
-    int anio   = lv_roller_get_selected(ui_RollerAnio) + 2025;
-    int mes    = lv_roller_get_selected(ui_RollerMes);     // 0–11
-    int dia    = lv_roller_get_selected(ui_RollerDia) + 1;
-    int hora   = lv_roller_get_selected(ui_RollerHora);
-    int minuto = lv_roller_get_selected(ui_RollerMinuto);
-
-    // Log para consola
-    ESP_LOGI("FECHA_HORA", "Nueva fecha y hora: %04d-%02d-%02d %02d:%02d", anio, mes + 1, dia, hora, minuto);
-
-    // Crear estructura de tiempo
-    struct tm t = {
-        .tm_year = anio - 1900,
-        .tm_mon  = mes,       // 0–11
-        .tm_mday = dia,
-        .tm_hour = hora,
-        .tm_min  = minuto,
-        .tm_sec  = 0,
-    };
-
-    time_t epoch = mktime(&t);
-    struct timeval now = { .tv_sec = epoch };
-    settimeofday(&now, NULL);  // 🕐 Aquí se actualiza el reloj del sistema
-
-    // La actualización de la barra de estado ahora se gestiona automáticamente
-    // por el módulo statusbar_manager
-    ESP_LOGI(EVENTS_TAG, "La hora del sistema ha sido actualizada. El statusbar_manager la mostrará automáticamente.");
+    // Usar la función del nuevo sistema que aplica los cambios ya recopilados
+    apply_datetime_changes_to_system();
+    
+    ESP_LOGI(EVENTS_TAG, "Fecha y hora aplicada desde el nuevo sistema de calendario y rollers");
 }
 
 /**
