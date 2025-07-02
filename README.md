@@ -7,7 +7,7 @@
 
 ---
 
-## 🧪 Descripción general
+## 🧪 sDescripción general
 
 Este proyecto controla un horno de vacío a través de una interfaz táctil implementada con **LVGL**, y cuenta con soporte para:
 
