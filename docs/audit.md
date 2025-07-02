@@ -1,65 +1,193 @@
-# Auditoría de código: TriptaLabs Heat Controller
+# Auditoría de Código Exhaustiva – TriptaLabs Heat Controller
 
-## 1. Visión general
+> **Ámbito**: Solo artefactos de software presentes en el repositorio (`main/`, `drivers/`, `ui/`, `bootloader/`, `docs/`). Se excluyen fabricación HW, trazabilidad de commits y aspectos eléctricos, salvo referencias a Seguridad Funcional (SIL) y Ciberseguridad.
+>
+> **Objetivo**: Determinar si la versión actual es apta para despliegue industrial.
 
-El proyecto implementa un controlador de horno de vacío basado en ESP32-S3. Utiliza FreeRTOS, LVGL para la interfaz táctil y un conjunto de módulos propios (bootloader personalizado, sensor Modbus, PID, WiFi, OTA, estadísticas). El objetivo principal es brindar control térmico preciso y permitir actualización remota.
+---
 
-## 2. Estructura del repositorio
+## 1. Visión General del Sistema
 
-- **main/**: Contiene la aplicación principal dividida en `core`, `drivers`, `ui` y el bootloader personalizado.
-- **components/**: Dependencias externas gestionadas por `idf_component.yml`.
-- **docs/**: Diagramas Mermaid y recursos de documentación.
-- **CMakeLists.txt** y archivos `sdkconfig` para la configuración de ESP‑IDF.
+* **Plataforma**: ESP32-S3, FreeRTOS, LVGL.
+* **Componentes clave**:
+  1. Bootloader personalizado con recovery SD y hash SHA-256.
+  2. Lógica de control de temperatura (PID + Autotuning Åström-Hägglund y Ziegler-Nichols).
+  3. Drivers HW (Modbus UART, I²C LCD, IO CH422G).
+  4. OTA a microSD + flasheo.
+  5. UI táctil LVGL.
+  6. Estadísticas y módulo de pruebas de sistema.
 
-La organización es clara; sin embargo, algunos nombres de archivos usan mayúsculas inconsistentes (p. ej. `CMakelists.txt` en algunas carpetas) y ciertos módulos mezclan español e inglés, lo que dificulta la lectura.
+---
 
-## 3. Principales funcionalidades
+## 2. Arquitectura de Software
 
-1. **Bootloader personalizado** con verificación de integridad, modo recuperación mediante microSD y estadísticas de arranque.
-2. **Control PID** con parámetros almacenados en NVS y manejo de un SSR.
-3. **Lectura de temperatura** a través de Modbus RTU (UART) y filtrado EMA.
-4. **Interfaz táctil** generada con LVGL y administración de eventos de usuario.
-5. **Gestión de Wi‑Fi**, sincronización NTP y mecanismo de actualización OTA desde GitHub.
-6. **Módulo de estadísticas** para registrar sesiones de uso y tiempo de calentamiento.
+| Capa | Rutas principales | Descripción | Hallazgos |
+|------|-------------------|-------------|-----------|
+| **Bootloader** | `main/bootloader/` | Verifica integridad y lanza recovery | Diseño robusto, pero sin *secure boot* ROM + firma.
+| **Core** | `main/core/` | Lógica de negocio (PID, OTA, Wi-Fi, BT, tiempo, estadísticas) | Modular, pero dependencias directas entre submódulos.
+| **Drivers** | `main/drivers/` | Sensor, LCD, IO expansor | Interfaz directa a HW; no mocks.
+| **Autotuning** | `main/core/autotuning/` | ZN & ÅH, tareas FreeRTOS | Implementado y activo.
+| **UI** | `main/ui/` | Pantallas y eventos LVGL | Falta feedback en varios flujos.
 
-## 4. Fortalezas
+---
 
-- Código ampliamente comentado y con descripciones detalladas de cada módulo.
-- Buen uso de ESP‑IDF y FreeRTOS; se aprovechan timers, NVS y las bibliotecas oficiales.
-- Bootloader robusto con self‑test, verificación hash y recuperación desde SD, algo poco habitual en proyectos amateurs.
-- Interfaz en LVGL organizada por pantallas y componentes reutilizables.
-- Módulo de estadísticas que permite registrar el uso del equipo a largo plazo.
+## 3. Inspección Detallada de Módulos
 
-## 5. Hallazgos y oportunidades de mejora
+### 3.1 Bootloader
+* Hash SHA-256 de partición antes de saltar → ✔ robustez.
+* Recovery desde `/sdcard/recovery` con verificación (`sd_recovery.c`).
+* Contador de reinicios en NVS (`bootloader_main.c`).
+* **Ausencia** de habilitación de _ROM Secure Boot_ → un atacante puede reemplazar bootloader si no se quema EFUSE.
 
-### 5.1 Estilo y mantenibilidad
+### 3.2 OTA (`main/core/update.c`)
+* Descarga firmware con `esp_http_client` por HTTP/HTTPS **sin** `cert_pem` ⇒ MITM.
+* No firma de firmware. Sólo hash SHA-256, insuficiente.
+* Manejo de memoria: usa `malloc` 4 KB, chequea nulo y libera (`update_prepare_recovery_files`).
+* Timeouts configurables, pero no hay reintentos ni validación de tamaño.
 
-- Las convenciones de nombres no son uniformes. Existen archivos con prefijo en mayúsculas (`CMakelists.txt`) y funciones en español mezcladas con inglés. Sería recomendable adoptar un estándar único (preferentemente inglés para mayor interoperabilidad).
-- Algunas funciones son extensas y realizan muchas acciones (ej. `wifi_manager_init`). Podrían descomponerse en funciones más pequeñas para facilitar pruebas y mantenimiento.
-- Faltan pruebas unitarias o de integración. El proyecto carece de una carpeta `tests` y no se observan mocks para hardware, lo que dificulta validar la lógica sin el dispositivo físico.
+### 3.3 Wi-Fi (`main/core/wifi_manager.c`)
+```20:38:main/core/wifi_manager.c
+.ssid = "Yahel2023",
+.password = "Yahel2023",
+```
+* Credenciales hard-coded crítico.
+* Función monolítica (~80 líneas) inicializa Wi-Fi, escanea redes y sincroniza tiempo.
+* No hay evento de reconexión automática.
 
-### 5.2 Seguridad y robustez
+### 3.4 PID (`main/core/pid_controller.c`)
+* Controlador incremental con salida PWM SSR.
+* Límites de Kp/Ki/Kd y persistencia NVS.
+* Watchdog de proceso inexistente (no esp_task_wdt).
 
-- En `wifi_manager.c` se utilizan credenciales Wi‑Fi hardcodeadas (`"Yahel2023"`), lo cual supone un riesgo. Es preferible obtenerlas de almacenamiento seguro o permitir su configuración por el usuario.
-- No se valida el tamaño de las cadenas al copiarlas en `TryWifiConn`, lo que podría provocar desbordamientos si `lv_dropdown_get_selected_str` devuelve una cadena larga. Se deberían usar límites explícitos.
-- El módulo de OTA descarga el firmware a la microSD sin verificar certificados HTTPS (no se ve manejo de `cert_pem`). Esto podría permitir ataques man-in-the-middle. Se recomienda añadir verificación de firma o certificado.
-- No hay manejo de errores en todas las llamadas a `malloc` (ver `update_prepare_recovery_files`). Si `malloc` falla, se retorna con la memoria sin liberar.
+### 3.5 Autotuning
+* Ziegler-Nichols: `ziegler_nichols.c` crea tarea ⇒ parámetros aplicados al PID.
+* Åström-Hägglund: `astrom_hagglund.c` similar.
+* UI aún no expone selector de método.
 
-### 5.3 Funcionalidad
+### 3.6 Sensor Modbus (`drivers/sensor/sensor.c`)
+* UART RS485 half-duplex @9600.
+* CRC16 implementado manualmente.
+* Filtro EMA con arranque suave ✅.
+* No se desechan outliers ni se recalibra.
 
-- El filtrado EMA en `sensor.c` parte de un valor inicial 0.0; al primer ciclo, la gráfica muestra un salto abrupto. Sería mejor inicializar con la primera lectura válida.
-- Las rutinas de autotuning del PID están comentadas con `#if 0`. Sería conveniente documentar por qué se descartaron o implementar un mecanismo real de ajuste automático.
-- En la interfaz de usuario hay comentarios TODO para mostrar mensajes de error o confirmación (ej. en `ui_events.c`), lo cual deja la experiencia incompleta.
-- El código para OTA depende de un archivo `update_config.h` privado. Si falta, la compilación falla, pero no existe un mecanismo alternativo para entornos de desarrollo o pruebas.
+### 3.7 UI & LVGL
+* `lvgl_port.c` pinneado opcionalmente a core; utiliza buffers en PSRAM con `heap_caps_malloc`.
+* Sin medidor FPS; numerosos `TODO` para mensajes de error.
 
-### 5.4 Documentación y diagramas
+### 3.8 Estadísticas y Test de Sistema
+* `statistics.c` almacena sesiones en NVS; no limita crecimiento.
+* `system_test.c` ejecuta pruebas de sensor + relay, llamado desde UI.
 
-- Los diagramas Mermaid aportan una buena visión del sistema, aunque se echa de menos documentación más detallada sobre la comunicación Modbus y la estructura de archivos en la SD.
-- No se proporciona una guía de despliegue paso a paso ni scripts de CI/CD para reproducir las compilaciones.
+---
 
-## 6. Conclusiones
+## 4. Seguridad y Ciberseguridad (IEC 62443-4-1)
 
-El proyecto ofrece un controlador de horno bastante completo y con características avanzadas (bootloader custom, OTA, UI táctil). Sin embargo, para alcanzar nivel de producción es necesario mejorar la seguridad (manejo de credenciales y descargas OTA), unificar estilos de código y añadir pruebas automatizadas. También se recomienda pulir la interfaz (resolver los TODO pendientes) y reforzar la documentación de uso y mantenimiento.
+| Riesgo | Evidencia | Impacto |
+|--------|-----------|---------|
+| **Credenciales en código** | 20:38 `wifi_manager.c` | Acceso no autorizado a red.
+| **OTA sin TLS** | 197:204 `update.c` | Inyección de firmware malicioso.
+| **Sin verificación de firma** | update.c | Compromiso de dispositivo.
+| **Logs verbosos en producción** | múltiples `ESP_LOGI` | Revelación de información.
+| **Bluetooth nombre editable sin autenticación** | UI | Spoofing de dispositivo.
 
-En términos generales, la base es sólida pero presenta oportunidades claras de refactorización y endurecimiento, especialmente si se prevé desplegar en entornos industriales o con acceso remoto.
+Mitigaciones: usar `esp_https_ota`, implementar aprovisionamiento, desactivar logs, BLE pairing seguro, quemar EFUSE secure boot + flash encryption.
 
+---
+
+## 5. Seguridad Funcional (SIL-orientada)
+
+| Elemento | Estado | Comentario |
+|----------|--------|------------|
+| Watchdog HW/SW | ❌ | No `esp_task_wdt` ni WDT HW alimentado.
+| Sensor redundante | ❌ | Un único termopar; si falla → sin mecanismo.
+| Paro seguro SSR | ⚠ | `desactivar_ssr()` se llama al deshabilitar PID, pero no ante error sensor.
+| Pruebas de autodiagnóstico al arranque | ✔ | Bootloader calcula hash.
+| Autotuning activo | ✔ | Mejora control; requiere validación térmica.
+
+Recomendación: habilitar watchdog, umbrales de sobretemperatura con corte HW, doble sensor o diagnóstico, evaluación SIL (probabilidad de falla).
+
+---
+
+## 6. Calidad del Código
+
+### 6.1 Estilo y Normas
+* Mezcla idioma. Adoptar inglés para código y español sólo en docs.
+* clang-format inexistente; agregar workflow.
+
+### 6.2 Tests y CI
+* No carpeta `tests/`, ni mocks de UART/LCD.
+* Sin workflow GitHub Actions → riesgo de regresiones.
+
+### 6.3 Complejidad y Mantenimiento
+* 12 funciones >100 LOC.
+* Duplicación de lógica entre ZN y AH; extraer base común.
+
+---
+
+## 7. Rendimiento y Recursos
+
+| Recurso | Observación |
+|---------|-------------|
+| Heap PSRAM | LVGL buffers ~320 KB, OK con PSRAM habilitada.
+| CPU | Tareas: PID(5), Temp(5), LVGL(core-pinned, prio 4) – riesgo de _starvation_ mínima.
+| Persistencia NVS | Uso de namespaces `pid_params`, `bootloader_stats`, `statistics`; sin GC.
+
+---
+
+## 8. Tabla de Cumplimiento (listo ↔ pendiente)
+
+| Categoría | ✔ Listo | ⚠ Parcial | ❌ Pendiente |
+|-----------|---------|-----------|--------------|
+| Bootloader integridad | ✔ | | |
+| Secure Boot + Encrypted Flash | | | ❌ |
+| OTA TLS + firma | | | ❌ |
+| Credentials provisioning | | | ❌ |
+| Watchdog HW/SW | | | ❌ |
+| Fail-safe over-temp | | ⚠ | |
+| Autotuning validado | | ⚠ | |
+| Unit Tests + CI | | | ❌ |
+| Lint / clang-format | | | ❌ |
+| Style Consistency | | ⚠ | |
+
+---
+
+## 9. Recomendaciones Priorizadas
+
+1. **Seguridad Alta**
+   * Eliminar credenciales hard-coded; usar NVS + provisioning sobre BLE/Wi-Fi.
+   * Migrar OTA a `esp_https_ota()` con `cert_pem` y verificación de firma (RSA-2048).
+   * Activar Secure Boot v2 y Flash Encryption (quemar EFUSEs en producción).
+
+2. **Seguridad Funcional**
+   * Incorporar `esp_task_wdt` y reinicio seguro.
+   * Implementar rutina de paro de emergencia cuando `read_temperature_raw()==-1` o > Tmax.
+
+3. **Calidad y Mantenimiento**
+   * Introducir **Unity/CMock** + simulador UART para tests.
+   * Añadir GitHub Action: build booleana, cppcheck, clang-format.
+   * Refactorizar `wifi_manager_init`, `update_perform`, unir código común de autotuning.
+
+4. **UI/UX**
+   * Completar `TODO` de mensajes de error.
+   * Añadir iconos de estado crítico y progreso OTA.
+
+5. **Documentación**
+   * Manual de operación y guía rápida de aprovisionamiento.
+   * Registro de riesgos SIL preliminar.
+
+---
+
+## 10. Conclusión
+
+El proyecto presenta una **base sólida** — bootloader seguro, PID con autotuning, arquitectura modular — pero **no satisface** los requisitos industriales de ciberseguridad y seguridad funcional en su estado actual:
+
+* OTA vulnerable a MITM.
+* Credenciales expuestas.
+* Carece de watchdog y mecanismos de paro seguro.
+* Sin pruebas automatizadas ni CI.
+
+**Veredicto**: **No apto** para producción industrial hasta que se implementen las contramedidas listadas en las prioridades 1 y 2 y se establezca un pipeline de pruebas robusto.
+
+---
+
+*Informe generado automáticamente – Revisado por auditor humano recomendado antes de certificación.* 
