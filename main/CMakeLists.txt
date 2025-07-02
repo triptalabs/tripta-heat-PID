@@ -4,6 +4,9 @@ idf_component_register(
         "core/main.c"
         "core/update.c"
         "core/pid_controller.c"
+        "core/autotuning/autotuning.c"
+        "core/autotuning/ziegler_nichols.c"
+        "core/autotuning/astrom_hagglund.c"
         "core/wifi_manager.c"
         "core/statistics.c"
         "core/system_test.c"
@@ -56,6 +59,7 @@ idf_component_register(
     INCLUDE_DIRS 
         "."
         "core"
+        "core/autotuning"
         "bootloader"
         "drivers/io"
         "drivers/display"

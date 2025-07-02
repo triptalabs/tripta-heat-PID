@@ -308,49 +308,53 @@ Combina **múltiples algoritmos** y utiliza lógica de decisión para selecciona
 ### 🥇 **Para TriptaLabs Heat Controller**
 
 ```
-🏆 MÉTODO RECOMENDADO: Tyreus-Luyben
+🏆 MÉTODO RECOMENDADO: Åström-Hägglund
 ```
 
 **🎯 Justificación:**
-- **✅ Balance perfecto** simplicidad/rendimiento
-- **✅ Excelente** para horno de vacío 26L
-- **✅ Compatible** con SSR actual
-- **✅ Implementación inmediata** (5 minutos)
-- **✅ ROI máximo**
+1. **✅ Máxima robustez** ante no linealidades y alta inercia térmica.  
+2. **✅ Mejor precisión** gracias a validación de amplitud y período.  
+3. **✅ Compatibilidad total** con control SSR ON/OFF.  
+4. **✅ Ya implementado** en el nuevo módulo `autotuning` → sin cambios de código adicionales.  
+5. **✅ Escalable** a futuros modos adaptativos.
 
 ### 🔧 **Implementación Simple**
 
+¡No requiere cambios manuales!  El método Åström-Hägglund está integrado en:
+
+```text
+main/core/autotuning/astrom_hagglund.c
+```
+
+Solo debes llamar a la API pública:
+
 ```c
-// Cambio en main/core/pid_controller.c
-// Reemplazar líneas 333-335:
+autotune_config_t cfg = {
+    .method   = AUTOTUNE_METHOD_AH,
+    .setpoint = 50.0f,
+    .max_duration_ms = 600000
+};
 
-// ANTES (Ziegler-Nichols):
-float new_kp = 0.6f * Ku;
-float new_ki = 1.2f * Ku / Pu;
-float new_kd = 0.075f * Ku * Pu;
-
-// DESPUÉS (Tyreus-Luyben):
-float new_kp = 0.45f * Ku;
-float new_ki = 0.45f * Ku / (2.2f * Pu);
-float new_kd = 0.45f * Ku * Pu / 6.3f;
+autotuning_init(&cfg);
+autotuning_start();
 ```
 
 ### 🔄 **Roadmap Evolutivo**
 
 | Fase | Método | Plazo | Beneficio |
 |------|--------|-------|-----------|
-| **Fase 1** | Tyreus-Luyben | Inmediato | +25% estabilidad |
-| **Fase 2** | Cohen-Coon | 3 meses | +40% precisión |
-| **Fase 3** | Åström-Hägglund | 12 meses | +60% adaptabilidad |
+| **Fase 1** | Åström-Hägglund | Inmediato | +60% adaptabilidad |
+| **Fase 2** | Tyreus-Luyben | 3 meses | Mayor estabilidad si se prefiere respuesta más conservadora |
+| **Fase 3** | Skogestad IMC | 12 meses | Ajuste fino basado en modelo para producción masiva |
 
 ### 📊 **Beneficios Esperados**
 
-**🎯 Mejoras con Tyreus-Luyben:**
-- **25% menos overshoot**
-- **64% reducción integral wind-up**  
-- **30% mejor tiempo de establecimiento**
-- **50% menos oscilaciones**
-- **Compatible 100%** con hardware actual
+**🎯 Mejoras con Åström-Hägglund:**
+- **60% mayor adaptabilidad**
+- **Mayor estabilidad** si se prefiere respuesta más conservadora
+- **Mayor precisión** gracias a validación de amplitud y período
+- **Compatibilidad total** con control SSR ON/OFF
+- **Ya implementado** en el nuevo módulo `autotuning` → sin cambios de código adicionales
 
 ---
 

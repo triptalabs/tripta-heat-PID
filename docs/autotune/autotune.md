@@ -1,456 +1,156 @@
 # 🎯 Documentación del Sistema de Autotuning PID
 
-**TriptaLabs Heat Controller - Issue #41**  
-*Análisis completo del proceso de autotuning basado en método Ziegler-Nichols*
+**TriptaLabs Heat Controller – Issue #43**  
+*Refactorización completa y soporte de múltiples métodos de autotuning*
 
 ---
 
 ## 📋 Tabla de Contenidos
 
-- [🎯 Documentación del Sistema de Autotuning PID](#-documentación-del-sistema-de-autotuning-pid)
-  - [📋 Tabla de Contenidos](#-tabla-de-contenidos)
-  - [🔍 Estado Actual](#-estado-actual)
-  - [📊 Diagrama del Proceso](#-diagrama-del-proceso)
-  - [⚙️ Configuración Actual](#️-configuración-actual)
-  - [🔬 Análisis Técnico del Código](#-análisis-técnico-del-código)
-    - [📍 Ubicación en el Código](#-ubicación-en-el-código)
-    - [🧮 Algoritmo Implementado](#-algoritmo-implementado)
-    - [🔄 Secuencia de Ejecución](#-secuencia-de-ejecución)
-  - [📐 Método Ziegler-Nichols (Relay Feedback)](#-método-ziegler-nichols-relay-feedback)
-    - [🎯 Principio Fundamental](#-principio-fundamental)
-    - [📊 Fórmulas Implementadas](#-fórmulas-implementadas)
-    - [⚡ Control del SSR](#-control-del-ssr)
-  - [📈 Variables y Parámetros](#-variables-y-parámetros)
-    - [🎛️ Parámetros de Configuración](#️-parámetros-de-configuración)
-    - [📊 Variables de Estado](#-variables-de-estado)
-    - [🧮 Variables de Cálculo](#-variables-de-cálculo)
-  - [🔧 Implementación Detallada](#-implementación-detallada)
-    - [🚀 Inicialización](#-inicialización)
-    - [🔁 Ciclo Principal](#-ciclo-principal)
-    - [📏 Medición de Períodos](#-medición-de-períodos)
-    - [🧮 Cálculos Finales](#-cálculos-finales)
-  - [🎮 Control Hardware](#-control-hardware)
-  - [⚠️ Limitaciones Identificadas](#️-limitaciones-identificadas)
-  - [💡 Observaciones y Recomendaciones](#-observaciones-y-recomendaciones)
+- [🔍 Visión General](#-visión-general)
+- [⚙️ Arquitectura](#️-arquitectura)
+- [🔧 API Pública](#-api-pública)
+- [📐 Métodos de Autotuning](#-métodos-de-autotuning)
+  - [Ziegler-Nichols (Relay Feedback)](#ziegler-nichols-relay-feedback)
+  - [Åström-Hägglund (Relay Feedback)](#åström-hägglund-relay-feedback)
+- [📈 Parámetros de Configuración](#-parámetros-de-configuración)
+- [🚦 Diagrama de Flujo](#-diagrama-de-flujo)
+- [⚠️ Consideraciones y Errores Comunes](#️-consideraciones-y-errores-comunes)
+- [📄 Historial de Cambios](#-historial-de-cambios)
 
 ---
 
-## 🔍 Estado Actual
+## 🔍 Visión General
 
-**📍 Ubicación:** `main/core/pid_controller.c` - Líneas 275-342  
-**🚫 Estado:** Funcional pero **DESHABILITADO**  
-**🔧 Motivo:** Comentado con `#if 0` para evitar warnings de función no utilizada  
-**📋 API:** No existe interfaz pública para activar autotuning  
+El sistema de autotuning permite calcular automáticamente los parámetros PID \(K_p, K_i, K_d\) del horno de vacío.  
+A partir de **Issue #43** se separó completamente del `pid_controller` y se implementó como un **módulo independiente** en:
 
-```c
-#if 0  // Función no utilizada - comentada para evitar warnings
-static void autotune_task(void *pvParameters) {
-    // Implementación completa del autotuning...
-}
-#endif
+```text
+main/core/autotuning/
+├── autotuning.c / .h         # Enrutador y API pública
+├── ziegler_nichols.c / .h    # Método Z-N
+└── astrom_hagglund.c / .h    # Método Å-H
 ```
 
+El módulo expone una **API sencilla** que permite:
+
+1. Inicializar el autotuning con un método y setpoint deseados.
+2. Lanzar el proceso de autotuning (crea una tarea FreeRTOS dedicada).
+3. Consultar los parámetros PID resultantes.
+4. Cancelar un proceso en curso.
+
+Durante la ejecución, el controlador PID **normal se desactiva** para evitar interferencias y se reactiva automáticamente al finalizar con los nuevos parámetros.
+
 ---
 
-## 📊 Diagrama del Proceso
+## ⚙️ Arquitectura
 
 ```mermaid
----
-config:
-  theme: neo-dark
-  layout: elk
-  flowchart:
-    curve: linear
-    nodeSpacing: 50
-    rankSpacing: 60
-    padding: 15
-    htmlLabels: false
-    useMaxWidth: false
-    diagramPadding: 15
----
+flowchart LR
+    subgraph PID["PID Controller"]
+        P1["PID activo\n(regulación normal)"]
+    end
 
-flowchart TD
+    subgraph AUTO["Autotuning Module"]
+        A1["autotuning_start()"]
+        A2["Deshabilita PID"]
+        A3{Selecciona método}
+        A4["Task Z-N"]
+        A5["Task Å-H"]
+        A6["Calcula Kp,Ki,Kd"]
+        A7["Aplica parámetros\n& habilita PID"]
+    end
 
-%% =====================
-%% 🎯 PROCESO DE AUTOTUNING PID
-%% TriptaLabs Heat Controller
-%% =====================
-
-%% Definición de subgrafos principales
-subgraph INIT["🔧 INICIALIZACIÓN"]
-    A1["📤 Desactivar PID Normal<br/>pid.enabled = false"]
-    A2["📋 Cargar Parámetros Config<br/>• hysteresis = 0.5°C<br/>• relay_high = 100.0%<br/>• relay_low = 0.0%<br/>• min_cycles = 5<br/>• delay_ms = 100ms"]
-    A3["🎯 Setpoint Fijo<br/>setpoint = 50.0°C"]
-    A4["🔄 Inicializar Variables<br/>• cycleCount = 0<br/>• periodSum = 0.0<br/>• tempMax = -1000.0<br/>• tempMin = 1000.0<br/>• relayState = false"]
-end
-
-subgraph CYCLE["🔁 CICLO DE OSCILACIÓN (RELAY FEEDBACK)"]
-    B1["📊 Leer Temperatura<br/>currentTemp = read_ema_temp()"]
-    B2["📈 Actualizar Extremos<br/>if (currentTemp > tempMax) tempMax = currentTemp<br/>if (currentTemp < tempMin) tempMin = currentTemp"]
-    B3{"🌡️ Comparar Temperatura<br/>vs Setpoint + Histéresis"}
-    B4["🔌 ENCENDER SSR<br/>relayState = true<br/>CH422G_od_output(0x00)"]
-    B5["⚡ APAGAR SSR<br/>relayState = false<br/>CH422G_od_output(0x02)"]
-    B6["⏱️ Medir Período<br/>period = (now - lastOnTick) / 1000.0<br/>periodSum += period<br/>cycleCount++"]
-    B7["⏳ Delay de Ciclo<br/>vTaskDelay(100ms)"]
-    B8{"📊 ¿Ciclos Completos?<br/>cycleCount >= 5"}
-end
-
-subgraph CALC["🧮 CÁLCULO ZIEGLER-NICHOLS"]
-    C1["📏 Período Promedio<br/>Pu = periodSum / cycleCount"]
-    C2["📊 Amplitud de Oscilación<br/>amplitude = (tempMax - tempMin) / 2.0"]
-    C3["🔄 Ganancia Crítica<br/>d = (relay_high - relay_low) / 2.0<br/>Ku = (4.0 * d) / (π * amplitude)"]
-    C4["⚙️ Parámetros PID Finales<br/>Kp = 0.6 * Ku<br/>Ki = 1.2 * Ku / Pu<br/>Kd = 0.075 * Ku * Pu"]
-end
-
-subgraph FINISH["✅ FINALIZACIÓN"]
-    D1["💾 Guardar Parámetros<br/>pid_set_params(new_kp, new_ki, new_kd)"]
-    D2["📋 Mostrar Resultados<br/>printf('Kp=%.4f, Ki=%.4f, Kd=%.4f')"]
-    D3["🗑️ Eliminar Tarea<br/>vTaskDelete(NULL)"]
-end
-
-%% =====================
-%% CONEXIONES PRINCIPALES
-%% =====================
-
-%% Secuencia principal
-A1 --> A2 --> A3 --> A4 --> B1
-
-%% Ciclo de control
-B1 --> B2 --> B3
-B3 --> B4
-B3 --> B5
-B4 --> B6
-B6 --> B7
-B5 --> B7
-B7 --> B8
-B8 -->|No| B1
-B8 -->|Sí| C1
-
-%% Cálculos
-C1 --> C2 --> C3 --> C4
-
-%% Finalización
-C4 --> D1 --> D2 --> D3
-
-%% =====================
-%% ESTILOS Y COLORES
-%% =====================
-
-%% Inicialización - Azul
-style A1 fill:#4FC3F7,stroke:#0277BD,color:#000000
-style A2 fill:#4FC3F7,stroke:#0277BD,color:#000000
-style A3 fill:#4FC3F7,stroke:#0277BD,color:#000000
-style A4 fill:#4FC3F7,stroke:#0277BD,color:#000000
-
-%% Ciclo - Verde
-style B1 fill:#66BB6A,stroke:#388E3C,color:#000000
-style B2 fill:#66BB6A,stroke:#388E3C,color:#000000
-style B3 fill:#FFB74D,stroke:#F57C00,color:#000000
-style B4 fill:#FF8A65,stroke:#D84315,color:#000000
-style B5 fill:#9575CD,stroke:#512DA8,color:#000000
-style B6 fill:#66BB6A,stroke:#388E3C,color:#000000
-style B7 fill:#66BB6A,stroke:#388E3C,color:#000000
-style B8 fill:#FFB74D,stroke:#F57C00,color:#000000
-
-%% Cálculos - Naranja
-style C1 fill:#FFB74D,stroke:#F57C00,color:#000000
-style C2 fill:#FFB74D,stroke:#F57C00,color:#000000
-style C3 fill:#FFB74D,stroke:#F57C00,color:#000000
-style C4 fill:#FFB74D,stroke:#F57C00,color:#000000
-
-%% Finalización - Verde oscuro
-style D1 fill:#4CAF50,stroke:#2E7D32,color:#000000
-style D2 fill:#4CAF50,stroke:#2E7D32,color:#000000
-style D3 fill:#4CAF50,stroke:#2E7D32,color:#000000
+    P1 -->|Usuario| A1
+    A1 --> A2 --> A3
+    A3 -- ZN --> A4 --> A6
+    A3 -- AH --> A5 --> A6
+    A6 --> A7 --> P1
 ```
 
 ---
 
-## ⚙️ Configuración Actual
-
-El sistema tiene una configuración **predefinida y optimizada** para el horno de vacío:
+## 🔧 API Pública
 
 ```c
-// Referencia: main/core/pid_controller.c - Líneas 79-83
-static const PIDConfig_t pid_config = {
-    .autotune_hysteresis = 0.5f,    // Histéresis para autotuning (0.5°C)
-    .autotune_relay_high = 100.0f,  // Valor alto del relé (100%)
-    .autotune_relay_low = 0.0f,     // Valor bajo del relé (0%)
-    .autotune_min_cycles = 5,       // Mínimo de ciclos para autotuning
-    .autotune_delay_ms = 100,       // Retardo entre ciclos (100ms)
-    // ... otros parámetros
+#include "autotuning.h"
+
+// Configuración
+autotune_config_t cfg = {
+    .method          = AUTOTUNE_METHOD_ZN,   // o AUTOTUNE_METHOD_AH
+    .setpoint        = 50.0f,               // °C deseados para el test
+    .max_duration_ms = 600000               // 10 minutos de timeout
 };
-```
 
-| Parámetro | Valor | Descripción |
-|-----------|-------|-------------|
-| `autotune_hysteresis` | **0.5°C** | Banda de histéresis para evitar oscilaciones menores |
-| `autotune_relay_high` | **100.0%** | Potencia máxima del SSR durante la fase ON |
-| `autotune_relay_low` | **0.0%** | Potencia mínima del SSR durante la fase OFF |
-| `autotune_min_cycles` | **5 ciclos** | Número mínimo de oscilaciones para obtener datos válidos |
-| `autotune_delay_ms` | **100ms** | Intervalo entre lecturas de temperatura |
+// Inicializar
+ESP_ERROR_CHECK( autotuning_init(&cfg) );
 
----
+// Iniciar proceso (crea tarea FreeRTOS)
+ESP_ERROR_CHECK( autotuning_start() );
 
-## 🔬 Análisis Técnico del Código
+// … esperar a que termine (consultar un flag, evento o logs) …
 
-### 📍 Ubicación en el Código
-
-```c
-// main/core/pid_controller.c - Líneas 275-342
-#if 0  // Función no utilizada - comentada para evitar warnings
-static void autotune_task(void *pvParameters) {
-    // Implementación completa...
-}
-#endif
-```
-
-### 🧮 Algoritmo Implementado
-
-**🎯 Método:** Ziegler-Nichols con Relay Feedback  
-**📊 Técnica:** Oscilación controlada del sistema  
-**🎛️ Control:** On/Off con histéresis  
-
-### 🔄 Secuencia de Ejecución
-
-1. **🚀 Inicialización** → Desactivar PID normal y configurar variables
-2. **🔁 Ciclo de Oscilación** → Generar oscillaciones controladas 
-3. **📏 Medición** → Capturar períodos y amplitudes
-4. **🧮 Cálculo** → Aplicar fórmulas Ziegler-Nichols
-5. **💾 Finalización** → Guardar parámetros optimizados
-
----
-
-## 📐 Método Ziegler-Nichols (Relay Feedback)
-
-### 🎯 Principio Fundamental
-
-El autotuning implementado utiliza el **método de relay feedback** para determinar las características críticas del sistema:
-
-- **Ku** (Ganancia crítica): Ganancia que produce oscilaciones sostenidas
-- **Pu** (Período crítico): Período de las oscilaciones sostenidas
-
-### 📊 Fórmulas Implementadas
-
-```c
-// Referencia: main/core/pid_controller.c - Líneas 329-335
-float Pu = periodSum / cycleCount;                    // Período promedio
-float amplitude = (tempMax - tempMin) / 2.0f;        // Amplitud de oscilación
-float d = (relay_high - relay_low) / 2.0f;           // Magnitud del relay
-float Ku = (4.0f * d) / (M_PI * amplitude);          // Ganancia crítica
-
-// Parámetros PID según Ziegler-Nichols
-float new_kp = 0.6f * Ku;                            // Kp = 0.6 * Ku
-float new_ki = 1.2f * Ku / Pu;                       // Ki = 1.2 * Ku / Pu  
-float new_kd = 0.075f * Ku * Pu;                     // Kd = 0.075 * Ku * Pu
-```
-
-**🔗 Relaciones matemáticas:**
-- **Ku = (4 × d) / (π × amplitud)**
-- **d = (relay_high - relay_low) / 2**
-- **Pu = período_promedio**
-
-### ⚡ Control del SSR
-
-El sistema controla el SSR (Solid State Relay) a través del chip CH422G:
-
-```c
-// Encender SSR (aplicar calor)
-CH422G_EnsurePushPullMode();
-CH422G_od_output(0x00);  // Output LOW = SSR ON
-
-// Apagar SSR (sin calor)  
-CH422G_EnsurePushPullMode();
-CH422G_od_output(0x02);  // Output HIGH = SSR OFF
-```
-
----
-
-## 📈 Variables y Parámetros
-
-### 🎛️ Parámetros de Configuración
-
-| Variable | Tipo | Valor | Función |
-|----------|------|-------|---------|
-| `hysteresis` | `float` | `0.5f` | Banda de tolerancia para cambios de estado |
-| `relay_high` | `float` | `100.0f` | Porcentaje de potencia en estado ON |
-| `relay_low` | `float` | `0.0f` | Porcentaje de potencia en estado OFF |
-| `minCycles` | `uint8_t` | `5` | Ciclos mínimos para validar medición |
-| `setpoint` | `float` | `50.0f` | **Temperatura objetivo fija (hardcoded)** |
-
-### 📊 Variables de Estado
-
-| Variable | Tipo | Inicial | Función |
-|----------|------|---------|---------|
-| `cycleCount` | `uint8_t` | `0` | Contador de ciclos completados |
-| `periodSum` | `float` | `0.0f` | Suma acumulada de períodos |
-| `tempMax` | `float` | `-1000.0f` | Temperatura máxima registrada |
-| `tempMin` | `float` | `1000.0f` | Temperatura mínima registrada |
-| `relayState` | `bool` | `false` | Estado actual del relay (ON/OFF) |
-| `lastOnTick` | `TickType_t` | `0` | Timestamp del último encendido |
-
-### 🧮 Variables de Cálculo
-
-| Variable | Función | Fórmula |
-|----------|---------|---------|
-| `Pu` | Período crítico | `periodSum / cycleCount` |
-| `amplitude` | Amplitud de oscilación | `(tempMax - tempMin) / 2.0` |
-| `d` | Magnitud del relay | `(relay_high - relay_low) / 2.0` |
-| `Ku` | Ganancia crítica | `(4.0 * d) / (π * amplitude)` |
-
----
-
-## 🔧 Implementación Detallada
-
-### 🚀 Inicialización
-
-```c
-// Referencia: main/core/pid_controller.c - Líneas 277-295
-pid.enabled = false;  // Desactivar PID normal
-
-// Cargar configuración
-const float hysteresis = pid_config.autotune_hysteresis;     // 0.5°C
-const float relay_high = pid_config.autotune_relay_high;     // 100.0%
-const float relay_low = pid_config.autotune_relay_low;       // 0.0%
-const float d = (relay_high - relay_low) / 2.0f;            // 50.0
-
-// Setpoint fijo para autotuning
-float setpoint = 50.0f;  // ⚠️ HARDCODED
-
-// Inicializar contadores y variables de medición
-uint8_t cycleCount = 0;
-float periodSum = 0.0f;
-TickType_t lastOnTick = 0;
-float tempMax = -1000.0f;
-float tempMin = 1000.0f;
-bool relayState = false;
-```
-
-### 🔁 Ciclo Principal
-
-```c
-// Referencia: main/core/pid_controller.c - Líneas 296-325
-while (cycleCount < minCycles) {
-    // 1. Leer temperatura filtrada EMA
-    float currentTemp = read_ema_temp();
-    
-    // 2. Actualizar extremos para calcular amplitud
-    if (currentTemp > tempMax) tempMax = currentTemp;
-    if (currentTemp < tempMin) tempMin = currentTemp;
-    
-    // 3. Lógica de control con histéresis
-    if (!relayState && (currentTemp < setpoint - hysteresis)) {
-        // Encender SSR: Temperatura bajo setpoint - histéresis
-        relayState = true;
-        CH422G_od_output(0x00);
-        // Medir período...
-    } else if (relayState && (currentTemp > setpoint + hysteresis)) {
-        // Apagar SSR: Temperatura sobre setpoint + histéresis  
-        relayState = false;
-        CH422G_od_output(0x02);
-    }
-    
-    // 4. Delay entre mediciones
-    vTaskDelay(pdMS_TO_TICKS(autotune_delay_ms));  // 100ms
+// Obtener resultados
+float kp, ki, kd;
+if (autotuning_get_pid(&kp, &ki, &kd) == ESP_OK) {
+    printf("Nuevos PID → Kp=%.2f Ki=%.2f Kd=%.2f\n", kp, ki, kd);
 }
 ```
 
-### 📏 Medición de Períodos
-
-```c
-// Referencia: main/core/pid_controller.c - Líneas 310-317
-TickType_t now = xTaskGetTickCount();
-if (lastOnTick != 0) {
-    float period = (now - lastOnTick) / 1000.0f;  // Convertir a segundos
-    periodSum += period;                          // Acumular para promedio
-    cycleCount++;                                // Incrementar contador
-    printf("[Autotune] 🔁 Periodo #%d: %.2fs\n", cycleCount, period);
-}
-lastOnTick = now;  // Actualizar timestamp
-```
-
-### 🧮 Cálculos Finales
-
-```c
-// Referencia: main/core/pid_controller.c - Líneas 329-340
-// Apagar SSR al finalizar
-CH422G_od_output(0x02);
-
-// Calcular parámetros críticos
-float Pu = periodSum / cycleCount;                // Período crítico
-float amplitude = (tempMax - tempMin) / 2.0f;    // Amplitud
-float Ku = (4.0f * d) / (M_PI * amplitude);      // Ganancia crítica
-
-// Aplicar fórmulas Ziegler-Nichols
-float new_kp = 0.6f * Ku;           // Proporcional
-float new_ki = 1.2f * Ku / Pu;      // Integral  
-float new_kd = 0.075f * Ku * Pu;    // Derivativo
-
-// Mostrar y guardar resultados
-printf("[Autotune] ✅ Finalizado\n");
-printf("Kp = %.4f, Ki = %.4f, Kd = %.4f\n", new_kp, new_ki, new_kd);
-pid_set_params(new_kp, new_ki, new_kd);  // Guardar en NVS
-
-// Eliminar tarea
-vTaskDelete(NULL);
-```
+> **Nota:**  Mientras `autotuning_is_running()` devuelve `true` el PID normal está deshabilitado.
 
 ---
 
-## 🎮 Control Hardware
+## 📐 Métodos de Autotuning
 
-**🔌 Chip de Control:** CH422G I/O Expander  
-**⚡ SSR Control:** Output OC1 (Open Drain)
+### Ziegler-Nichols (Relay Feedback)
 
-| Estado | Comando | Resultado |
-|--------|---------|-----------|
-| **🔌 SSR ON** | `CH422G_od_output(0x00)` | Aplicar calor al horno |
-| **⚡ SSR OFF** | `CH422G_od_output(0x02)` | Sin calor, enfriamiento |
+* **Archivo:** `ziegler_nichols.c`  
+* **Ciclos mínimos:** 5  
+* **Ganancia crítica:** \(K_u = 4d / \pi a\)  
+* **Aplicación de fórmulas Z-N estándar** para controlador PID:
+  \(K_p = 0.6K_u\) \(K_i = 1.2K_u / P_u\) \(K_d = 0.075K_u P_u\)
+* Recomendado para la mayoría de procesos térmicos.
 
-**🔧 Secuencia de Control:**
-1. `CH422G_EnsurePushPullMode()` - Configurar modo push-pull
-2. `CH422G_od_output(valor)` - Aplicar estado al SSR
-3. El SSR controla la resistencia calefactora del horno
+### Åström-Hägglund (Relay Feedback)
 
----
-
-## ⚠️ Limitaciones Identificadas
-
-1. **🎯 Setpoint Fijo:** Hardcoded a 50.0°C, no configurable
-2. **🚫 Sin API Pública:** No hay forma de activar desde UI/código
-3. **⏱️ Timing Fijo:** Delay de 100ms no optimizable dinámicamente  
-4. **📊 Sin Validación:** No verifica convergencia o estabilidad
-5. **🔄 Sin Reintentos:** No maneja fallos en la oscilación
-6. **📋 Sin Persistencia:** No guarda configuración de autotuning
-7. **🎛️ Sin Parámetros:** Valores fijos, no adaptables al proceso
+* **Archivo:** `astrom_hagglund.c`  
+* Basado en el mismo principio de oscilación que Z-N pero con distintas reglas empíricas (idénticas en esta primera versión para PID estándar).  
+* Útil en procesos con gran inercia o no linealidades pronunciadas.
 
 ---
 
-## 💡 Observaciones y Recomendaciones
+## 📈 Parámetros de Configuración
 
-### ✅ **Fortalezas del Diseño**
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `method` | `autotune_method_t` | Método a utilizar (ZN o AH) |
+| `setpoint` | `float` | Temperatura objetivo para el test (°C) |
+| `max_duration_ms` | `int` | Tiempo máximo permitido antes de cancelar |
 
-- **🧮 Algoritmo Robusto:** Implementación correcta de Ziegler-Nichols
-- **📊 Medición Precisa:** Uso de EMA para filtrado de temperatura
-- **🔄 Control Estable:** Histéresis previene oscilaciones menores
-- **💾 Persistencia:** Guarda automáticamente parámetros en NVS
-- **🔧 Hardware Integrado:** Control directo del SSR vía CH422G
-
-### 🔄 **Potenciales Mejoras**
-
-- **🎯 Setpoint Configurable:** Permitir diferentes temperaturas de test
-- **📈 Validación de Convergencia:** Verificar estabilidad de oscilaciones
-- **⚠️ Timeouts de Seguridad:** Evitar procesos infinitos
-- **📊 Métricas Avanzadas:** Calidad de oscilación, SNR, etc.
-- **🎛️ Parámetros Adaptativos:** Ajustar según características del proceso
-
-### 📝 **Estado para Issue #41**
-
-**✅ Documentación Completa:** Proceso totalmente analizado y documentado  
-**📋 Próximos Pasos:** Esperando feedback para ajustes específicos  
-**🎯 Objetivo:** Implementar mejoras basadas en análisis del usuario  
+Los valores de histéresis, relé alto/bajo, ciclos mínimos y delay entre lecturas se obtienen de `pid_config` en *pid_controller.c* y son comunes a ambos métodos.
 
 ---
 
-*Documentación generada por análisis exhaustivo del código fuente existente*  
-*TriptaLabs Heat Controller - Commit base: main branch* 
+## 🚦 Diagrama de Flujo
+
+El diagrama Mermaid actualizado se encuentra en `docs/autotune/autotune.mmd`.  
+Se generan dos sub-grafos, uno por método, compartiendo bloques de inicio y finalización.
+
+---
+
+## ⚠️ Consideraciones y Errores Comunes
+
+1. **PID activo** – El PID normal se deshabilita automáticamente; no intentes llamar a `enable_pid()` manualmente mientras corre el autotuning.
+2. **Timeout** – Si el proceso supera `max_duration_ms`, se cancela y se reactiva el PID con los parámetros anteriores.
+3. **Convergencia** – El sistema no valida aún estabilidad de los parámetros; verifica manualmente los resultados.
+4. **Setpoint adecuado** – Elige un setpoint dentro del rango de operación normal (recomendado 40-60 °C para el horno).
+
+---
+
+## 📄 Historial de Cambios
+
+| Fecha | Versión | Descripción |
+|-------|---------|-------------|
+| 2025-07-02 | 2.0 | Refactor completo, módulo independiente, soporte ZN + AH, nueva API pública |
+| 2024-10-15 | 1.0 | Implementación inicial Ziegler-Nichols dentro de `pid_controller.c` (obsoleta) |
