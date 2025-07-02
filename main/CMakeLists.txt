@@ -56,6 +56,8 @@ idf_component_register(
         "ui/components/statusbar_manager.c"
         "ui/components/ui_comp.c"
         "ui/components/ui_comp_hook.c"
+        "core/wifi_prov.c"
+        "core/ws_server/ws_server.c"
     INCLUDE_DIRS 
         "."
         "core"
@@ -69,6 +71,7 @@ idf_component_register(
         "ui/screens"
         "ui/images"
         "ui/components"
+        "core/ws_server"
     REQUIRES
         esp_wifi
         nvs_flash
@@ -88,6 +91,7 @@ idf_component_register(
         mbedtls
         freertos
         vfs
+        mdns
 )
 
 # Añadir rutas privadas adicionales
