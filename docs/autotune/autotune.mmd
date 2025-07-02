@@ -1,0 +1,159 @@
+---
+config:
+  theme: neo-dark
+  layout: elk
+  flowchart:
+    curve: linear
+    nodeSpacing: 50
+    rankSpacing: 60
+    padding: 15
+    htmlLabels: false
+    useMaxWidth: false
+    diagramPadding: 15
+---
+
+flowchart TD
+
+%% =====================
+%% 🎯 PROCESO DE AUTOTUNING PID
+%% TriptaLabs Heat Controller
+%% =====================
+
+%% Definición de subgrafos principales
+subgraph INIT["🔧 INICIALIZACIÓN"]
+    A1["📤 Desactivar PID Normal<br/>pid.enabled = false"]
+    A2["📋 Cargar Parámetros Config<br/>• hysteresis = 0.5°C<br/>• relay_high = 100.0%<br/>• relay_low = 0.0%<br/>• min_cycles = 5<br/>• delay_ms = 100ms"]
+    A3["🎯 Setpoint Fijo<br/>setpoint = 50.0°C"]
+    A4["🔄 Inicializar Variables<br/>• cycleCount = 0<br/>• periodSum = 0.0<br/>• tempMax = -1000.0<br/>• tempMin = 1000.0<br/>• relayState = false"]
+end
+
+subgraph CYCLE["🔁 CICLO DE OSCILACIÓN (RELAY FEEDBACK)"]
+    B1["📊 Leer Temperatura<br/>currentTemp = read_ema_temp()"]
+    B2["📈 Actualizar Extremos<br/>if (currentTemp > tempMax) tempMax = currentTemp<br/>if (currentTemp < tempMin) tempMin = currentTemp"]
+    B3{"🌡️ Comparar Temperatura<br/>vs Setpoint + Histéresis"}
+    B4["🔌 ENCENDER SSR<br/>relayState = true<br/>CH422G_od_output(0x00)"]
+    B5["⚡ APAGAR SSR<br/>relayState = false<br/>CH422G_od_output(0x02)"]
+    B6["⏱️ Medir Período<br/>period = (now - lastOnTick) / 1000.0<br/>periodSum += period<br/>cycleCount++"]
+    B7["⏳ Delay de Ciclo<br/>vTaskDelay(100ms)"]
+    B8{"📊 ¿Ciclos Completos?<br/>cycleCount >= 5"}
+end
+
+subgraph CALC["🧮 CÁLCULO ZIEGLER-NICHOLS"]
+    C1["📏 Período Promedio<br/>Pu = periodSum / cycleCount"]
+    C2["📊 Amplitud de Oscilación<br/>amplitude = (tempMax - tempMin) / 2.0"]
+    C3["🔄 Ganancia Crítica<br/>d = (relay_high - relay_low) / 2.0<br/>Ku = (4.0 * d) / (π * amplitude)"]
+    C4["⚙️ Parámetros PID Finales<br/>Kp = 0.6 * Ku<br/>Ki = 1.2 * Ku / Pu<br/>Kd = 0.075 * Ku * Pu"]
+end
+
+subgraph FINISH["✅ FINALIZACIÓN"]
+    D1["💾 Guardar Parámetros<br/>pid_set_params(new_kp, new_ki, new_kd)"]
+    D2["📋 Mostrar Resultados<br/>printf('Kp=%.4f, Ki=%.4f, Kd=%.4f')"]
+    D3["🗑️ Eliminar Tarea<br/>vTaskDelete(NULL)"]
+end
+
+subgraph CONFIG["📝 CONFIGURACIÓN ACTUAL"]
+    E1["🎛️ PARÁMETROS DE AUTOTUNING<br/>autotune_hysteresis = 0.5°C<br/>autotune_relay_high = 100.0%<br/>autotune_relay_low = 0.0%<br/>autotune_min_cycles = 5<br/>autotune_delay_ms = 100ms"]
+    E2["⚙️ VALORES PID INICIALES<br/>kp_default = 1.0<br/>ki_default = 0.1<br/>kd_default = 2.0"]
+    E3["🚫 ESTADO ACTUAL<br/>#if 0 (COMENTADO)<br/>Función no utilizada"]
+end
+
+subgraph CONTROL["🎮 LÓGICA DE CONTROL SSR"]
+    F1["🌡️ Temp < SP - 0.5°C<br/>Y relayState = false"]
+    F2["🌡️ Temp > SP + 0.5°C<br/>Y relayState = true"]
+    F3["📈 CONDICIÓN ENCENDIDO<br/>Temperatura BAJO setpoint"]
+    F4["📉 CONDICIÓN APAGADO<br/>Temperatura SOBRE setpoint"]
+end
+
+%% =====================
+%% CONEXIONES PRINCIPALES
+%% =====================
+
+%% Secuencia principal
+A1 --> A2 --> A3 --> A4 --> B1
+
+%% Ciclo de control
+B1 --> B2 --> B3
+B3 --> F1
+B3 --> F2
+F1 --> B4 --> B6
+F2 --> B5
+B4 --> B7
+B5 --> B7
+B6 --> B7
+B7 --> B8
+B8 -->|No| B1
+B8 -->|Sí| C1
+
+%% Cálculos
+C1 --> C2 --> C3 --> C4
+
+%% Finalización
+C4 --> D1 --> D2 --> D3
+
+%% Configuración
+E1 -.->|"Utiliza"| A2
+E2 -.->|"Valores por defecto"| A4
+E3 -.->|"Estado"| A1
+
+%% Control detallado
+F3 -.->|"Implementa"| F1
+F4 -.->|"Implementa"| F2
+
+%% =====================
+%% ESTILOS Y COLORES
+%% =====================
+
+%% Inicialización - Azul
+style A1 fill:#4FC3F7,stroke:#0277BD,color:#000000
+style A2 fill:#4FC3F7,stroke:#0277BD,color:#000000
+style A3 fill:#4FC3F7,stroke:#0277BD,color:#000000
+style A4 fill:#4FC3F7,stroke:#0277BD,color:#000000
+
+%% Ciclo - Verde
+style B1 fill:#66BB6A,stroke:#388E3C,color:#000000
+style B2 fill:#66BB6A,stroke:#388E3C,color:#000000
+style B3 fill:#FFB74D,stroke:#F57C00,color:#000000
+style B4 fill:#FF8A65,stroke:#D84315,color:#000000
+style B5 fill:#9575CD,stroke:#512DA8,color:#000000
+style B6 fill:#66BB6A,stroke:#388E3C,color:#000000
+style B7 fill:#66BB6A,stroke:#388E3C,color:#000000
+style B8 fill:#FFB74D,stroke:#F57C00,color:#000000
+
+%% Cálculos - Naranja
+style C1 fill:#FFB74D,stroke:#F57C00,color:#000000
+style C2 fill:#FFB74D,stroke:#F57C00,color:#000000
+style C3 fill:#FFB74D,stroke:#F57C00,color:#000000
+style C4 fill:#FFB74D,stroke:#F57C00,color:#000000
+
+%% Finalización - Verde oscuro
+style D1 fill:#4CAF50,stroke:#2E7D32,color:#000000
+style D2 fill:#4CAF50,stroke:#2E7D32,color:#000000
+style D3 fill:#4CAF50,stroke:#2E7D32,color:#000000
+
+%% Configuración - Gris
+style E1 fill:#BDBDBD,stroke:#616161,color:#000000
+style E2 fill:#BDBDBD,stroke:#616161,color:#000000
+style E3 fill:#F44336,stroke:#D32F2F,color:#FFFFFF
+
+%% Control - Amarillo
+style F1 fill:#FFF176,stroke:#FBC02D,color:#000000
+style F2 fill:#FFF176,stroke:#FBC02D,color:#000000
+style F3 fill:#FFF176,stroke:#FBC02D,color:#000000
+style F4 fill:#FFF176,stroke:#FBC02D,color:#000000
+
+%% =====================
+%% NOTAS TÉCNICAS
+%% =====================
+
+%% Agregar notas explicativas
+subgraph NOTES["📚 NOTAS TÉCNICAS"]
+    N1["🔬 MÉTODO ZIEGLER-NICHOLS<br/>• Relay Feedback Method<br/>• Oscilación controlada del sistema<br/>• Cálculo de ganancia crítica (Ku)<br/>• Período crítico (Pu)"]
+    N2["⚡ CONTROL SSR<br/>• CH422G_od_output(0x00) = ON<br/>• CH422G_od_output(0x02) = OFF<br/>• Relay feedback con histéresis"]
+    N3["📊 FÓRMULAS ZN<br/>• Ku = (4*d)/(π*amplitude)<br/>• d = (relay_high - relay_low)/2<br/>• Kp = 0.6 * Ku<br/>• Ki = 1.2 * Ku / Pu<br/>• Kd = 0.075 * Ku * Pu"]
+    N4["🚫 ESTADO ACTUAL<br/>Código funcional pero deshabilitado<br/>Comentado con #if 0<br/>No hay API pública"]
+end
+
+style N1 fill:#E1F5FE,stroke:#0277BD,color:#000000
+style N2 fill:#E8F5E8,stroke:#388E3C,color:#000000  
+style N3 fill:#FFF3E0,stroke:#F57C00,color:#000000
+style N4 fill:#FFEBEE,stroke:#D32F2F,color:#000000 
