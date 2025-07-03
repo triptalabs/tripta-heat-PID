@@ -40,6 +40,11 @@ static void broadcast_task(void *arg)
             .len = 0
         };
         char *payload = build_status_json();
+        if (!payload) {
+            ESP_LOGE(TAG, "No memory for JSON payload");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
         frame.payload = (uint8_t *)payload;
         frame.len = strlen(payload);
 
@@ -52,6 +57,7 @@ static void broadcast_task(void *arg)
         free(payload);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
+    s_broadcast_task = NULL; // Señalar finalización
     vTaskDelete(NULL);
 }
 
@@ -70,6 +76,10 @@ static esp_err_t ws_handler(httpd_req_t *req)
         return ret;
     }
     uint8_t *buf = calloc(1, frame.len + 1);
+    if (!buf) {
+        ESP_LOGE(TAG, "Out of memory reading WS frame");
+        return ESP_ERR_NO_MEM;
+    }
     frame.payload = buf;
     ret = httpd_ws_recv_frame(req, &frame, frame.len);
     if (ret == ESP_OK) {
@@ -113,12 +123,15 @@ esp_err_t ws_server_start(void)
 esp_err_t ws_server_stop(void)
 {
     if (!s_server) return ESP_OK;
-    if (s_broadcast_task) {
-        TaskHandle_t h = s_broadcast_task;
-        s_broadcast_task = NULL;
-        vTaskDelete(h);
+
+    httpd_handle_t hd = s_server;
+    s_server = NULL; // Señal para que broadcast_task termine por sí misma
+
+    // Esperar hasta 100 ms a que la tarea se elimine sola
+    for (int i = 0; i < 100 && s_broadcast_task; ++i) {
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
-    esp_err_t r = httpd_stop(s_server);
-    s_server = NULL;
+
+    esp_err_t r = httpd_stop(hd);
     return r;
 } 
