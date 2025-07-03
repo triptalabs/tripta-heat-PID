@@ -1,0 +1,29 @@
+---
+config:
+  theme: neo-dark
+---
+sequenceDiagram
+    participant MAIN as main.c
+    participant WIFI_MGR as WiFi Manager
+    participant NVS as NVS Storage
+    participant MDNS as mDNS Service
+    participant WS as WebSocket Server
+    participant NET as Network Stack
+    MAIN->>WIFI_MGR: wifi_manager_init()
+    WIFI_MGR->>NVS: wifi_prov_get_credentials()
+    alt Credenciales encontradas
+        NVS-->>WIFI_MGR: {ssid, password}
+        WIFI_MGR->>NET: esp_wifi_set_config()
+    else Sin credenciales
+        WIFI_MGR->>WIFI_MGR: wifi_prov_start_ble_provisioning()
+        Note over WIFI_MGR: Fallback a credenciales demo
+    end
+    WIFI_MGR->>NET: esp_wifi_connect()
+    NET-->>WIFI_MGR: WIFI_EVENT_STA_CONNECTED
+    NET-->>WIFI_MGR: IP_EVENT_STA_GOT_IP
+    WIFI_MGR->>MDNS: mdns_init()
+    WIFI_MGR->>MDNS: mdns_hostname_set("horno")
+    WIFI_MGR->>MDNS: mdns_service_add("_ws", "_tcp", 8080)
+    WIFI_MGR->>WS: ws_server_start()
+    WS->>WS: Crear tarea broadcast_task (1Hz)
+    Note over MAIN,WS: Sistema listo para conexiones WebSocket

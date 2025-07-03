@@ -1,0 +1,37 @@
+---
+config:
+  layout: elk
+  theme: neo-dark
+---
+flowchart LR
+ subgraph HTTP_SERVER["esp_http_server"]
+        HANDLER["ws_handler()<br>📝 Message Processing"]
+        URI["/ws endpoint<br>🔗 WebSocket Upgrade"]
+  end
+ subgraph TASKS["FreeRTOS Tasks"]
+        BROADCAST["broadcast_task<br>📡 1Hz JSON Status"]
+        MAIN_TASK["Main Task<br>🎯 Core Logic"]
+  end
+ subgraph DATA["Data Sources"]
+        SENSOR_DATA["Sensor Reading<br>🌡️ read_ema_temp()"]
+        PID_DATA["PID Status<br>⚙️ pid_ssr_status()"]
+        SYSTEM_DATA["System State<br>📊 Alarms, Setpoint"]
+  end
+ subgraph ESP32["ESP32-S3 WebSocket Server"]
+        HTTP_SERVER
+        TASKS
+        DATA
+  end
+ subgraph CLIENTS["WebSocket Clients"]
+        WEB_APP["🌐 Web Application"]
+        MOBILE_APP["📱 Mobile App"]
+        MONITOR["🖥️ Monitoring Tool"]
+  end
+    SENSOR_DATA --> BROADCAST
+    PID_DATA --> BROADCAST
+    SYSTEM_DATA --> BROADCAST
+    BROADCAST -- JSON cada 1s --> WEB_APP & MOBILE_APP & MONITOR
+    WEB_APP -- Control Commands --> HANDLER
+    MOBILE_APP -- Control Commands --> HANDLER
+    HANDLER -- Parse & Execute --> MAIN_TASK
+w

@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant CLIENT as Web App
+    participant WS as WebSocket Server
+    participant PID as PID Controller
+    participant SENSOR as Temperature Sensor
+
+    %% Conexión inicial
+    CLIENT->>WS: WebSocket Connect (ws://horno.local:8080/ws)
+    WS-->>CLIENT: Connection Established
+    
+    %% Broadcasting automático
+    loop Cada 1 segundo
+        SENSOR->>WS: read_ema_temp()
+        PID->>WS: pid_ssr_status()
+        WS->>WS: build_status_json()
+        WS-->>CLIENT: {"type":"status","temp":31.2,...}
+    end
+    
+    %% Comando del cliente
+    CLIENT->>WS: {"command":"set_temperature","value":180.0}
+    WS->>WS: Parse JSON command
+    WS->>PID: set_setpoint(180.0)
+    PID-->>WS: Success
+    WS-->>CLIENT: {"type":"response","success":true}
+    
+    %% Respuesta inmediata
+    SENSOR->>WS: read_ema_temp()
+    WS-->>CLIENT: {"type":"status","setpoint":180.0,...}

@@ -1,0 +1,48 @@
+---
+config:
+  layout: elk
+  theme: neo-dark
+---
+flowchart TB
+ subgraph CORE["💾 Core Application"]
+        PID["PID Controller<br>📊 Sensor PT100"]
+        SENSOR["Temperature Sensor<br>🌡️ RS485/Modbus"]
+        SSR["SSR Control<br>⚡ Heating Element"]
+  end
+ subgraph NET["🌐 Network Stack"]
+        WIFI_MGR["WiFi Manager<br>📶 Connection Handler"]
+        MDNS["mDNS Service<br>🔍 horno.local"]
+        WS_SERVER["WebSocket Server<br>📡 Port 8080"]
+        PROV["WiFi Provisioning<br>🔐 NVS + BLE*"]
+  end
+ subgraph UI["🖥️ User Interface"]
+        LVGL["LVGL GUI<br>🎨 Touch Interface"]
+        STATUS["Status Bar<br>📊 Network Icons"]
+  end
+ subgraph ESP32["🔌 ESP32-S3 Heat Controller"]
+        CORE
+        NET
+        UI
+  end
+ subgraph NETWORK["🌍 Local Network"]
+        ROUTER["🏠 WiFi Router<br>DHCP + Internet"]
+        CLIENT_WEB["💻 Web Browser<br>React/Vue/JS App"]
+        CLIENT_MOBILE["📱 Mobile App<br>React Native/Flutter"]
+        DISCOVERY["🔍 mDNS Browser<br>Network Discovery"]
+  end
+ subgraph EXTERNAL["☁️ External Services"]
+        NTP["🕐 NTP Servers<br>Time Sync"]
+        GITHUB["📦 GitHub Releases<br>OTA Updates"]
+  end
+    ESP32 -. WiFi WPA2/3 .-> ROUTER
+    ROUTER -- Internet --> NTP & GITHUB
+    WIFI_MGR -- Obtiene IP --> MDNS
+    MDNS -- "Anuncia _ws._tcp:8080" --> DISCOVERY
+    WIFI_MGR -- "Auto-start" --> WS_SERVER
+    CLIENT_WEB -- "ws://horno.local:8080/ws" --> WS_SERVER
+    CLIENT_MOBILE -- "ws://horno.local:8080/ws" --> WS_SERVER
+    DISCOVERY -- "Encuentra horno.local" --> CLIENT_WEB
+    PID -- Estado --> WS_SERVER
+    SENSOR -- Temperatura --> PID
+    WS_SERVER -- Comandos --> PID
+    NET -- Estado conexión --> STATUS
