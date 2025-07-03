@@ -92,6 +92,8 @@ idf_component_register(
         freertos
         vfs
         mdns
+        esp_http_server
+        json
 )
 
 # Añadir rutas privadas adicionales
