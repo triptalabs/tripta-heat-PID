@@ -17,6 +17,7 @@
 #include "wifi_prov.h"
 #include "network_config.h"
 #include "mdns.h"
+#include "ws_server.h"
 
 static const char *TAG = "wifi_manager";
 
@@ -43,7 +44,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
         if (!mdns_started) {
             mdns_init();
             mdns_hostname_set("horno");
-            mdns_service_add(NULL, "_ws", "_tcp", 8080, NULL, 0);
+            mdns_service_add(NULL, "_ws", "_tcp", WS_SERVER_PORT, NULL, 0);
+            ws_server_start();
             mdns_started = true;
             ESP_LOGI(TAG, "mDNS hostname 'horno.local' registrado");
         }
