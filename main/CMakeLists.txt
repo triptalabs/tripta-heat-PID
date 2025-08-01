@@ -12,10 +12,7 @@ idf_component_register(
         "core/system_test.c"
         "core/system_time.c"
         "core/bt.c"
-        "bootloader/bootloader_main.c"
-        "bootloader/integrity_checker.c"
-        "bootloader/sd_recovery.c"
-        "bootloader/recovery_mode.c"
+
         "drivers/io/CH422G.c"
         "drivers/display/waveshare_rgb_lcd_port.c"
         "drivers/sensor/sensor.c"
@@ -62,7 +59,7 @@ idf_component_register(
         "."
         "core"
         "core/autotuning"
-        "bootloader"
+
         "drivers/io"
         "drivers/display"
         "drivers/sensor"

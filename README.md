@@ -2,7 +2,7 @@
 
 # 🔥 TriptaLabs Heat Controller
 
-**Controlador inteligente industrial para horno de vacío**, desarrollado por TriptaLabs, basado en ESP32-S3 con **bootloader personalizado**, interfaz táctil avanzada y sistema de actualización OTA innovador. 
+**Controlador inteligente industrial para horno de vacío**, desarrollado por TriptaLabs, basado en ESP32-S3 con interfaz táctil avanzada y sistema de actualización OTA. 
 
 > 🎯 **Proyecto de nivel industrial** con arquitectura robusta, verificación de integridad SHA256, recuperación automática y control PID profesional.
 
@@ -18,13 +18,13 @@ Este sistema implementa un **controlador profesional de horno de vacío** que co
 
 ### ✨ Características Principales
 
-* 🛡️ **Bootloader personalizado** con verificación SHA256 y recuperación automática
+
 * 🎛️ **Control PID avanzado** con parámetros configurables y anti-windup
 * 🌡️ **Lectura precisa PT100** vía **Modbus RTU** implementado manualmente
-* 📡 **Actualización OTA innovadora** directa sobre partición única (sin OTA estándar)
+* 📡 **Actualización OTA** mediante ESP-IDF estándar
 * 🖼️ **Interfaz táctil profesional** con LVGL y modo desarrollador secreto  
 * 📊 **Sistema de estadísticas** y monitoreo de sesiones
-* 🔧 **Modo recovery** con interfaz UART para mantenimiento
+
 * 🌐 **Conectividad dual** WiFi + Bluetooth con sincronización NTP
 
 ---
@@ -199,152 +199,29 @@ STATUSBAR --> WIFI_MGR
 
 ---
 
-## 🛡️ Bootloader Personalizado y Sistema de Recuperación
+## 🔄 Sistema de Actualización
 
-Una de las características más innovadoras del proyecto es su **bootloader personalizado** que proporciona verificación de integridad y recuperación automática:
+El sistema utiliza el **sistema OTA estándar de ESP-IDF** para actualizaciones seguras:
 
-### 🔐 Características del Bootloader
 
-* **Verificación SHA256** del firmware en cada arranque
-* **Contadores de fallos** con límite de 3 intentos
-* **Recuperación automática** desde microSD
-* **Modo recovery manual** con interfaz UART
-* **Estadísticas persistentes** en NVS
 
-```mermaid
----
-config:
-  layout: fixed
----
-flowchart TD
- subgraph subGraph0["💾 Variables NVS Críticas"]
-        AU["🔐 firmware_hash<br/>(SHA256 del firmware)"]
-        AV["🔢 boot_attempts<br/>(0-3, resetea en boot exitoso)"]
-        AW["🚨 recovery_flag<br/>(true/false)"]
-        AX["⏰ last_boot_time<br/>(timestamp último boot)"]
-  end
- subgraph subGraph1["🔍 Criterios Razón de Arranque"]
-        AY["🆕 PRIMER ARRANQUE:<br/>• firmware_hash no existe en NVS<br/>• O NVS vacío/corrupto"]
-        AZ["🔐 ARRANQUE NORMAL:<br/>• firmware_hash existe<br/>• recovery_flag = false<br/>• boot_attempts &lt; 3"]
-        BA["🚨 MODO RECUPERACIÓN:<br/>• recovery_flag = true<br/>• O boot_attempts &gt;= 3<br/>• O activación manual"]
-  end
- subgraph subGraph2["💾 Distribución Memoria"]
-        BB["📦 Particiones (13MB Total)"]
-        BC["🔧 app0: 10MB<br/>(Aplicación Principal)"]
-        BD["💾 nvs: 1MB<br/>(Config + Variables Boot)"]
-        BE["📁 spiffs: 2MB<br/>(Datos Usuario)"]
-  end
-    A["🔌 Encendido ESP32-S3"] --> B["🚀 Bootloader ESP-IDF"]
-    B --> C["📱 Inicio App (main/core/main.c)"]
-    C --> D["🛡️ Inicialización Bootloader<br/>(bootloader_main.c)"]
-    D --> E["🔍 Determinar Razón de Arranque"]
-    E --> F{"📊 Leer NVS"}
-    F -- Hash no existe --> G["🆕 PRIMER ARRANQUE<br/>• Sin hash previo<br/>• Firmware nuevo"]
-    F -- Hash existe --> H["🔐 ARRANQUE NORMAL<br/>• Hash encontrado<br/>• Verificar integridad"]
-    F -- "Flag recovery=true" --> I["🚨 MODO RECUPERACIÓN<br/>• Flag manual activado<br/>• O falla crítica previa"]
-    G --> J["📝 Generar Hash SHA256<br/>(integrity_checker.c)"]
-    J --> K["💾 Guardar Hash en NVS"]
-    K --> L["✅ Continuar a Aplicación"]
-    H --> M["🔐 Verificar Integridad Firmware<br/>(Comparar SHA256 actual vs NVS)"]
-    M --> N{"✅ Hash Coincide?"}
-    N -- Sí --> O["📊 boot_attempts = 0"]
-    N -- No --> P["⚠️ boot_attempts++"]
-    O --> L
-    P --> Q{"🔢 boot_attempts >= 3?"}
-    Q -- No --> R["💾 recovery_flag = false<br/>📝 Guardar en NVS"]
-    Q -- Sí --> S["🆘 recovery_flag = true<br/>💾 Guardar en NVS<br/>🔄 esp_restart()"]
-    R --> T["🔄 Reiniciar ESP32<br/>(Reintentar arranque)"]
-    T --> B
-    S --> U["🔄 Reiniciar → Modo Recuperación"]
-    U --> B
-    I --> V["📺 Mostrar Menú Recuperación<br/>(recovery_mode.c)"]
-    V --> W{"👤 Elección Usuario"}
-    W -- Recuperación SD --> X["🗂️ Proceso Recuperación SD"]
-    W -- Recuperación UART --> Y["💻 Interfaz UART"]
-    W -- Info Sistema --> Z["📋 Estado del Sistema"]
-    W -- Reiniciar Normal --> AA["🔄 recovery_flag = false<br/>Reiniciar"]
-    X --> AB["🔍 Montar Tarjeta SD"]
-    AB --> AC{"📁 SD Encontrada?"}
-    AC -- No --> AD["❌ Error: SD no encontrada"]
-    AC -- Sí --> AE["🔎 Buscar Archivos Firmware"]
-    AE --> AF["📂 Verificar /sdcard/recovery/<br/>1️⃣ update.bin (prioridad)<br/>2️⃣ base_firmware.bin"]
-    AF --> AG{"📄 Archivos Encontrados?"}
-    AG -- No --> AH["❌ Sin archivos de recuperación"]
-    AG -- Sí --> AI["🔐 Verificar SHA256 archivo"]
-    AI --> AJ{"✅ Archivo Válido?"}
-    AJ -- No --> AK["❌ Archivo corrupto"]
-    AJ -- Sí --> AL["⚡ Flashear a partición app0"]
-    AL --> AM["📝 Actualizar hash en NVS"]
-    AM --> AN["💾 recovery_flag = false"]
-    AN --> AO["🔄 Reiniciar ESP32"]
-    AO --> B
-    Y --> AP["💬 Comandos UART disponibles:<br/>• info - Información sistema<br/>• recovery - Iniciar recuperación SD<br/>• reboot - Reiniciar normal<br/>• factory - Reset de fábrica"]
-    Z --> AQ["📊 Información del Sistema:<br/>• Hash actual firmware<br/>• Intentos arranque: {boot_attempts}<br/>• Flag recuperación: {recovery_flag}<br/>• Último arranque exitoso<br/>• Espacio libre particiones"]
-    AD --> AR["🔄 Volver al Menú"]
-    AH --> AR
-    AK --> AR
-    AR --> V
-    AA --> AS["🔄 Reiniciar con recovery_flag=false"]
-    AS --> B
-    L --> AT["🎯 TriptaLabs Heat Controller<br/>Aplicación Principal"]
-    BB --> BC & BD & BE
 
-    style G fill:#51cf66
-    style H fill:#74c0fc
-    style I fill:#ff8787
-    style L fill:#51cf66
-    style X fill:#ffd43b
-    style AT fill:#51cf66
-```
-
-### 🚨 Modo Recovery
-
-El sistema incluye un **modo recovery avanzado** accesible mediante:
-- **Automático**: Después de 3 fallos de arranque consecutivos
-- **Manual**: Mediante comando UART o flag en NVS
-- **Interfaz UART**: Comandos `info`, `recovery`, `reboot`, `factory`
 
 ---
-
-## 💾 Sistema de Actualización OTA Innovador
-
-A diferencia de las implementaciones OTA estándar de ESP-IDF, este proyecto utiliza un **enfoque único**:
 
 ### 🎯 Características del OTA
 
-* **Partición única** (app0) - Sin particiones OTA dedicadas
-* **Actualización directa** flasheando sobre app0 desde bootloader
+* **Sistema OTA estándar** de ESP-IDF con particiones dedicadas
 * **Descarga desde GitHub** con verificación JSON
-* **Backup automático** en microSD antes de actualización
-* **Rollback seguro** en caso de fallo
+* **Rollback automático** en caso de fallo
 
 ### 📋 Tabla de Particiones
 
-```csv
-# Name,        Type, SubType, Offset,  Size,     Notes
-nvs,           data, nvs,     0x9000,  0x100000, # Config + Boot vars
-app0,          app,  factory, 0x110000, 0xA00000, # Main application  
-spiffs,        data, spiffs,  ,        0x200000, # User data
-```
+La tabla de particiones utiliza la configuración estándar de ESP-IDF para OTA.
 
 ### 🔄 Flujo de Actualización
 
-```mermaid
-flowchart TD
-    A[App descarga update.bin] --> B[Guarda en /sdcard/update.bin]
-    B --> C[pending_update = true en NVS]
-    C --> D[esp_restart()]
-    D --> E[Bootloader detecta flag]
-    E --> F[Verifica SHA256 del archivo]
-    F --> G[Flashea app0 completo]
-    G --> H[Actualiza hash en NVS]
-    H --> I[pending_update = false]
-    I --> J[Reinicia a nueva versión]
-    
-    style A fill:#e1f5fe
-    style G fill:#ff8a65
-    style J fill:#81c784
-```
+El sistema utiliza el mecanismo OTA estándar de ESP-IDF con particiones dedicadas y rollback automático.
 
 ---
 
@@ -521,11 +398,7 @@ triptalabs-heat-controller/
 │   │   ├── statistics.c/.h      # Monitoreo de sesiones
 │   │   ├── system_time.c/.h     # Gestión de tiempo
 │   │   └── bt.c/.h              # Bluetooth BLE
-│   ├── bootloader/              # 🛡️ Bootloader personalizado
-│   │   ├── bootloader_main.c/.h # Lógica principal
-│   │   ├── integrity_checker.c/.h # Verificación SHA256
-│   │   ├── sd_recovery.c/.h     # Recuperación desde SD
-│   │   └── recovery_mode.c/.h   # Interfaz recovery
+
 │   ├── drivers/                 # 🔧 Drivers de hardware
 │   │   ├── config/              # Configuración I2C
 │   │   ├── display/             # Driver display + CH422G
@@ -540,10 +413,9 @@ triptalabs-heat-controller/
 │   └── CMakeLists.txt           # Configuración de compilación
 ├── docs/                        # 📚 Documentación
 │   ├── summary.mmd              # Diagrama arquitectura
-│   ├── bootloader.mmd           # Diagrama bootloader
+
 │   └── audit.md                 # Auditoría de código
 ├── .tmp/                        # 🗂️ Archivos temporales
-│   ├── bootloader/              # Docs adicionales bootloader
 │   ├── ux/                      # Diagramas UX
 │   └── arq/                     # Diagramas arquitectura
 ├── partitions.csv               # 💾 Tabla de particiones
@@ -639,51 +511,17 @@ triptalabs-heat-controller/
 
 ---
 
-## 🛠️ Troubleshooting y Recovery
+## 🛠️ Troubleshooting
 
-### 🚨 Modo Recovery Automático
+### 🔄 Sistema de Recovery
 
-El sistema entra automáticamente en recovery si:
-- **3 fallos de arranque** consecutivos
-- **Hash SHA256 inválido** del firmware
-- **Flag recovery** activado manualmente
-
-### 💻 Comandos UART (115200 baud)
-
-```bash
-info        # Información del sistema
-recovery    # Iniciar recuperación desde SD
-reboot      # Reiniciar normal
-factory     # Reset de fábrica
-```
-
-### 🗂️ Estructura SD para Recovery
-
-```
-/sdcard/
-├── recovery/
-│   ├── update.bin          # Firmware de actualización (prioridad)
-│   └── base_firmware.bin   # Firmware base de respaldo
-└── backups/                # Backups automáticos
-    └── previous_firmware.bin
-```
-
-### 🔄 Recuperación Manual
-
-1. **Preparar microSD** con firmware válido en `/recovery/`
-2. **Conectar UART** y abrir terminal serie
-3. **Activar recovery**: 
-   - Comando `recovery` por UART, o
-   - Reiniciar 3 veces consecutivas
-4. **Seguir menú** de recuperación en pantalla
+El sistema utiliza el mecanismo de rollback automático estándar de ESP-IDF en caso de fallos en las actualizaciones OTA.
 
 ---
 
 ## ⚠️ Estado Actual del Proyecto
 
 ### ✅ Funcionalidades Implementadas
-
-* ✅ **Bootloader personalizado** con verificación SHA256
 * ✅ **Control PID avanzado** con parámetros configurables
 * ✅ **Lectura PT100** vía Modbus RTU manual
 * ✅ **Sistema OTA completo** con backup automático
@@ -717,9 +555,7 @@ factory     # Reset de fábrica
 ### 🛡️ Medidas de Seguridad Implementadas
 
 * URLs OTA ocultas del código público
-* Verificación SHA256 de firmware
-* Límites de intentos de arranque
-* Recovery automático ante fallos
+* Sistema OTA estándar con rollback automático
 * Almacenamiento seguro en NVS
 
 ---
