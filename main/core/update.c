@@ -155,15 +155,7 @@ esp_err_t update_init(void) {
     // Reset por defecto
     is_update_pending = false;
     
-    // Intentar verificar si hay actualización
-    bool update_flag = false;
-    esp_err_t err = update_check(&update_flag);
-    if (err == ESP_OK) {
-        is_update_pending = update_flag;
-    } else {
-        ESP_LOGW(TAG, "No se pudo verificar actualizaciones: %s", esp_err_to_name(err));
-        // Mantiene is_update_pending = false
-    }
+    ESP_LOGI(TAG, "Módulo de actualización inicializado (verificación manual requerida)");
     return ESP_OK;
 }
 

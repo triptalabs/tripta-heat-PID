@@ -1,4 +1,4 @@
-# main/CMakeLists.txt
+    # main/CMakeLists.txt
 idf_component_register(
     SRCS 
         "core/main.c"
@@ -31,8 +31,8 @@ idf_component_register(
         "ui/screens/ui_Devmode.c"
         "ui/images/ui_img_logoblanco_png.c"
         "ui/images/ui_img_qrcode_png.c"
-        "ui/images/ui_img_logo_blanco_png_png.c"
-        "ui/images/ui_img_imgsettings_png.c"
+        # "ui/images/ui_img_logo_blanco_png_png.c"  # DESACTIVADO - 7.4MB causa brownout
+        # "ui/images/ui_img_imgsettings_png.c"  # DESACTIVADO - 2.4MB
         "ui/images/ui_img_img_wifi_png.c"
         "ui/images/ui_img_img_heating2_png.c"
         "ui/images/ui_img_img_cooling_png.c"

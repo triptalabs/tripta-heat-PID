@@ -55,7 +55,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Firmware Version: 1.0.0");
     ESP_LOGI(TAG, "ESP32-S3 Vacuum Oven Controller");
     
-    // Inicializar módulo de actualización
+    // Inicializar módulo de actualización (solo variables, sin verificación de red)
     update_init();
     
     DEV_Module_Init();  // Inicializa I2C
@@ -69,9 +69,6 @@ void app_main(void)
      * conflictos con otras tareas que acceden a LVGL
      */
     if (lvgl_port_lock(-1)) {
-        // Inicializar sistema de tiempo antes de cargar la interfaz
-        system_time_init();
-        
         // Carga interfaz gráfica
         ui_init();
 
@@ -88,6 +85,9 @@ void app_main(void)
 
         // Configura WiFi (sin pasar cui_datetime1 ya que ahora lo maneja statusbar_manager)
         wifi_manager_init(ui_Dropdown1, NULL);
+        
+        // Inicializar sistema de tiempo DESPUÉS de WiFi
+        system_time_init();
 
         // Inicia tareas principales
         start_temperature_task();
