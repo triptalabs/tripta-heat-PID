@@ -30,7 +30,9 @@
 #include "driver/sdmmc_host.h"
 #include "driver/sdmmc_defs.h"
 #include "esp_vfs_fat.h"
-
+#include "bootloader_main.h"
+#include "integrity_checker.h"
+#include "sd_recovery.h"
 #include "mbedtls/sha256.h"
 
 // Intentar incluir configuración secreta si existe
@@ -155,7 +157,15 @@ esp_err_t update_init(void) {
     // Reset por defecto
     is_update_pending = false;
     
-    ESP_LOGI(TAG, "Módulo de actualización inicializado (verificación manual requerida)");
+    // Intentar verificar si hay actualización
+    bool update_flag = false;
+    esp_err_t err = update_check(&update_flag);
+    if (err == ESP_OK) {
+        is_update_pending = update_flag;
+    } else {
+        ESP_LOGW(TAG, "No se pudo verificar actualizaciones: %s", esp_err_to_name(err));
+        // Mantiene is_update_pending = false
+    }
     return ESP_OK;
 }
 
@@ -465,7 +475,9 @@ esp_err_t update_perform(const char *firmware_path, const char *fallback_path) {
     // Limpiar bandera de actualización pendiente
     is_update_pending = false;
     
-    // Firmware flasheado exitosamente
+    // Generar hash del nuevo firmware antes de reiniciar
+    ESP_LOGI(TAG, "Generando hash de integridad para el nuevo firmware...");
+    update_generate_integrity_hash();
     
     // Reiniciar el dispositivo para aplicar los cambios
     ESP_LOGI(TAG, "Reiniciando sistema para aplicar nueva actualización...");
@@ -515,7 +527,144 @@ esp_err_t update_set_config(const update_config_t *config) {
     return ESP_OK;
 }
 
+/**
+ * @brief Genera hash SHA256 del firmware actual y lo almacena para verificación de integridad.
+ */
+esp_err_t update_generate_integrity_hash(void) {
+    ESP_LOGI(TAG, "Generando hash de integridad del firmware actual...");
+    
+    const esp_partition_t* app_partition = esp_ota_get_running_partition();
+    if (!app_partition) {
+        ESP_LOGE(TAG, "No se pudo obtener partición de aplicación");
+        return ESP_FAIL;
+    }
+    
+    uint8_t firmware_hash[32];
+    esp_err_t ret = calculate_partition_sha256(app_partition, firmware_hash);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error calculando hash del firmware: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ret = store_firmware_hash(firmware_hash);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error almacenando hash del firmware: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ESP_LOGI(TAG, "✅ Hash de integridad generado y almacenado exitosamente");
+    return ESP_OK;
+}
 
+/**
+ * @brief Prepara archivos de recovery en la SD para el bootloader.
+ */
+esp_err_t update_prepare_recovery_files(void) {
+    ESP_LOGI(TAG, "Preparando archivos de recovery en SD...");
+    
+    esp_err_t ret = mount_sdcard_if_needed();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error montando SD para recovery");
+        return ret;
+    }
+    
+    ret = create_recovery_directory();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error creando directorio de recovery");
+        return ret;
+    }
+    
+    // Obtener partición actual
+    const esp_partition_t* app_partition = esp_ota_get_running_partition();
+    if (!app_partition) {
+        ESP_LOGE(TAG, "No se pudo obtener partición de aplicación");
+        return ESP_FAIL;
+    }
+    
+    // Leer firmware actual y escribirlo en SD
+    const char* recovery_firmware_path = "/sdcard/recovery/base_firmware.bin";
+    const char* recovery_hash_path = "/sdcard/recovery/base_firmware.bin.sha256";
+    
+    FILE* recovery_file = fopen(recovery_firmware_path, "wb");
+    if (!recovery_file) {
+        ESP_LOGE(TAG, "Error creando archivo de recovery");
+        return ESP_FAIL;
+    }
+    
+    // Leer partición y escribir a archivo
+    uint8_t* buffer = malloc(4096);
+    if (!buffer) {
+        fclose(recovery_file);
+        return ESP_ERR_NO_MEM;
+    }
+    
+    mbedtls_sha256_context sha256_ctx;
+    mbedtls_sha256_init(&sha256_ctx);
+    mbedtls_sha256_starts(&sha256_ctx, 0);
+    
+    size_t offset = 0;
+    size_t total_written = 0;
+    
+    while (offset < app_partition->size) {
+        size_t read_size = (app_partition->size - offset > 4096) ? 4096 : (app_partition->size - offset);
+        
+        ret = esp_partition_read(app_partition, offset, buffer, read_size);
+        if (ret != ESP_OK) {
+            break;
+        }
+        
+        // Escribir a archivo
+        if (fwrite(buffer, 1, read_size, recovery_file) != read_size) {
+            ret = ESP_FAIL;
+            break;
+        }
+        
+        // Actualizar hash
+        mbedtls_sha256_update(&sha256_ctx, buffer, read_size);
+        
+        offset += read_size;
+        total_written += read_size;
+    }
+    
+    fclose(recovery_file);
+    
+    if (ret == ESP_OK) {
+        // Finalizar hash y escribir archivo
+        uint8_t firmware_hash[32];
+        mbedtls_sha256_finish(&sha256_ctx, firmware_hash);
+        
+        ret = write_hash_file_to_sd(recovery_hash_path, firmware_hash);
+        if (ret == ESP_OK) {
+            ESP_LOGI(TAG, "✅ Archivos de recovery preparados (%.1f MB)", 
+                     (float)total_written / (1024 * 1024));
+        }
+    }
+    
+    free(buffer);
+    mbedtls_sha256_free(&sha256_ctx);
+    
+    return ret;
+}
 
-
-
+/**
+ * @brief Verifica la integridad del firmware actual usando hash SHA256.
+ */
+esp_err_t update_verify_firmware_integrity(bool *integrity_ok) {
+    if (!integrity_ok) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    ESP_LOGI(TAG, "Verificando integridad del firmware actual...");
+    
+    firmware_info_t firmware_info;
+    esp_err_t ret = verify_app_partition_integrity(&firmware_info);
+    *integrity_ok = (ret == ESP_OK);
+    
+    if (*integrity_ok) {
+        ESP_LOGI(TAG, "✅ Integridad del firmware verificada exitosamente");
+    } else {
+        ESP_LOGE(TAG, "❌ Fallo en la verificación de integridad: %s", esp_err_to_name(ret));
+    }
+    
+    return ESP_OK;
+}

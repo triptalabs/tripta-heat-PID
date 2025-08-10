@@ -22,7 +22,7 @@
 #include "pid_controller.h"
 #include "statistics.h"
 #include "../ui/components/statusbar_manager.h"
-
+#include "bootloader_main.h"
 #include "update.h"
 #include "system_time.h"
 #include <string.h>
@@ -38,7 +38,7 @@
  * @brief Función principal del firmware.
  * 
  * Realiza la inicialización de hardware y software:
-
+ * - Ejecuta verificación de integridad del bootloader
  * - Configura el bus I2C.
  * - Inicializa la pantalla RGB y el backend de LVGL.
  * - Carga la interfaz gráfica exportada desde SquareLine Studio.
@@ -48,15 +48,38 @@
 void app_main(void)
 {
     // ========================================
-    // INICIALIZACIÓN PRINCIPAL
+    // FASE INICIAL: BOOTLOADER Y VERIFICACIÓN
     // ========================================
     
     ESP_LOGI(TAG, "=== INICIANDO TRIPTABS HEAT CONTROLLER ===");
     ESP_LOGI(TAG, "Firmware Version: 1.0.0");
     ESP_LOGI(TAG, "ESP32-S3 Vacuum Oven Controller");
     
-    // Inicializar módulo de actualización (solo variables, sin verificación de red)
+    // Usar macro de conveniencia para inicialización completa del bootloader
+    BOOTLOADER_INIT_AND_CHECK();
+    
+    // Inicializar módulo de actualización
     update_init();
+    
+    // Generar hash de integridad si es el primer boot después de actualización
+    bool integrity_ok = false;
+    if (update_verify_firmware_integrity(&integrity_ok) == ESP_OK) {
+        if (!integrity_ok) {
+            ESP_LOGW(TAG, "Regenerando hash de integridad...");
+            update_generate_integrity_hash();
+        }
+    }
+    
+    // Preparar archivos de recovery en background (solo si no es primer boot)
+    if (!BOOTLOADER_IS_FIRST_BOOT()) {
+        update_prepare_recovery_files();
+    }
+    
+    ESP_LOGI(TAG, "✅ Verificaciones de bootloader completadas exitosamente");
+    
+    // ========================================
+    // FASE PRINCIPAL: INICIALIZACIÓN NORMAL
+    // ========================================
     
     DEV_Module_Init();  // Inicializa I2C
 
@@ -69,6 +92,9 @@ void app_main(void)
      * conflictos con otras tareas que acceden a LVGL
      */
     if (lvgl_port_lock(-1)) {
+        // Inicializar sistema de tiempo antes de cargar la interfaz
+        system_time_init();
+        
         // Carga interfaz gráfica
         ui_init();
 
@@ -85,9 +111,6 @@ void app_main(void)
 
         // Configura WiFi (sin pasar cui_datetime1 ya que ahora lo maneja statusbar_manager)
         wifi_manager_init(ui_Dropdown1, NULL);
-        
-        // Inicializar sistema de tiempo DESPUÉS de WiFi
-        system_time_init();
 
         // Inicia tareas principales
         start_temperature_task();
@@ -103,7 +126,14 @@ void app_main(void)
         lvgl_port_unlock();
     }
     
-    ESP_LOGI(TAG, "🎉 Sistema iniciado completamente");
+    // ========================================
+    // FINALIZACIÓN: MARCAR BOOT COMO EXITOSO
+    // ========================================
+    
+    // Todas las inicializaciones completadas exitosamente
+    // Marcar este boot como exitoso para el bootloader
+    bootloader_mark_boot_successful();
+    ESP_LOGI(TAG, "🎉 Sistema iniciado completamente - Boot marcado como exitoso");
 
     // Nota: no se necesita un bucle explícito; LVGL corre en background.
 }
