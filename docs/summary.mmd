@@ -121,6 +121,7 @@ Render + Touch"]
         WIFI_MGR["Gestor WiFi
 Scan, Connect, SNTP"]
         SNTP["Servidor SNTP"]
+        WS_SERVER["WebSocket Server"]
     end
 
     subgraph PROTO["📡 PROTOCOLOS"]
@@ -185,6 +186,8 @@ UPDATE --> JSON
 WIFI_MGR --> WIFI_STACK
 WIFI_MGR --> SNTP
 HTTP --> GITHUB
+WS_SERVER --> JSON
+WS_SERVER --> WIFI_STACK
 linkStyle 24,29,30,34 stroke:#D38F64,stroke-width:2px
 
 %% 🔴 UI Eventos
