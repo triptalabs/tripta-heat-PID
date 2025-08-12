@@ -113,4 +113,4 @@ idf_component_register(
 * Implementar CI (GitHub Actions) con compilación + static-analysis.
 
 ---
-> _Documento generado por propuesta de refactor — {{ fecha }}_ 
+> _Documento generado por propuesta de refactor — 2025-08-12_
