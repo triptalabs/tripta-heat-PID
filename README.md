@@ -22,10 +22,11 @@ Este sistema implementa un **controlador profesional de horno de vacío** que co
 * 🎛️ **Control PID avanzado** con parámetros configurables y anti-windup
 * 🌡️ **Lectura precisa PT100** vía **Modbus RTU** implementado manualmente
 * 📡 **Actualización OTA** mediante ESP-IDF estándar
-* 🖼️ **Interfaz táctil profesional** con LVGL y modo desarrollador secreto  
+* 🖼️ **Interfaz táctil profesional** con LVGL y modo desarrollador secreto
 * 📊 **Sistema de estadísticas** y monitoreo de sesiones
+* ⚡ **Servidor WebSocket** para comunicación en tiempo real y monitoreo remoto
 
-* 🌐 **Conectividad dual** WiFi + Bluetooth con sincronización NTP
+* 🌐 **Conectividad dual** WiFi + Bluetooth con mDNS y sincronización NTP
 
 ---
 
@@ -531,6 +532,7 @@ El sistema utiliza el mecanismo de rollback automático estándar de ESP-IDF en 
 * ✅ **Sistema de estadísticas** y monitoreo
 * ✅ **Sincronización NTP** automática
 * ✅ **Gráfico en tiempo real** con buffer circular
+* ✅ **Servidor WebSocket** con descubrimiento mDNS
 
 ### 🔄 Próximas Mejoras
 
@@ -551,6 +553,7 @@ El sistema utiliza el mecanismo de rollback automático estándar de ESP-IDF en 
 * **Verificación HTTPS** en descargas OTA (añadir certificados)
 * **Validación de entrada** en manipulación de strings
 * **Manejo de memoria** robusto en todas las operaciones malloc
+* **WebSocket sin autenticación ni cifrado** (requiere WSS y tokens)
 
 ### 🛡️ Medidas de Seguridad Implementadas
 

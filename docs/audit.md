@@ -1,6 +1,6 @@
 # Auditoría de Código Exhaustiva – TriptaLabs Heat Controller
 
-> **Ámbito**: Solo artefactos de software presentes en el repositorio (`main/`, `drivers/`, `ui/`, `bootloader/`, `docs/`). Se excluyen fabricación HW, trazabilidad de commits y aspectos eléctricos, salvo referencias a Seguridad Funcional (SIL) y Ciberseguridad.
+> **Ámbito**: Solo artefactos de software presentes en el repositorio (`main/`, `drivers/`, `ui/`, `docs/`). Se excluyen fabricación HW, trazabilidad de commits y aspectos eléctricos, salvo referencias a Seguridad Funcional (SIL) y Ciberseguridad.
 >
 > **Objetivo**: Determinar si la versión actual es apta para despliegue industrial.
 
@@ -10,8 +10,8 @@
 
 * **Plataforma**: ESP32-S3, FreeRTOS, LVGL.
 * **Componentes clave**:
-  1. Bootloader personalizado con recovery SD y hash SHA-256.
-  2. Lógica de control de temperatura (PID + Autotuning Åström-Hägglund y Ziegler-Nichols).
+  1. Lógica de control de temperatura (PID + Autotuning Åström-Hägglund y Ziegler-Nichols).
+  2. Servidor WebSocket para monitoreo y control remoto.
   3. Drivers HW (Modbus UART, I²C LCD, IO CH422G).
   4. OTA a microSD + flasheo.
   5. UI táctil LVGL.
@@ -23,21 +23,20 @@
 
 | Capa | Rutas principales | Descripción | Hallazgos |
 |------|-------------------|-------------|-----------|
-| **Bootloader** | `main/bootloader/` | Verifica integridad y lanza recovery | Diseño robusto, pero sin *secure boot* ROM + firma.
 | **Core** | `main/core/` | Lógica de negocio (PID, OTA, Wi-Fi, BT, tiempo, estadísticas) | Modular, pero dependencias directas entre submódulos.
 | **Drivers** | `main/drivers/` | Sensor, LCD, IO expansor | Interfaz directa a HW; no mocks.
 | **Autotuning** | `main/core/autotuning/` | ZN & ÅH, tareas FreeRTOS | Implementado y activo.
+| **WebSocket** | `main/core/ws_server/` | Servidor WS para clientes remotos | Sin autenticación ni cifrado.
 | **UI** | `main/ui/` | Pantallas y eventos LVGL | Falta feedback en varios flujos.
 
 ---
 
 ## 3. Inspección Detallada de Módulos
 
-### 3.1 Bootloader
-* Hash SHA-256 de partición antes de saltar → ✔ robustez.
-* Recovery desde `/sdcard/recovery` con verificación (`sd_recovery.c`).
-* Contador de reinicios en NVS (`bootloader_main.c`).
-* **Ausencia** de habilitación de _ROM Secure Boot_ → un atacante puede reemplazar bootloader si no se quema EFUSE.
+### 3.1 WebSocket Server (`main/core/ws_server/ws_server.c`)
+* Broadcast JSON de estado cada segundo.
+* Soporta múltiples clientes sobre `esp_http_server`.
+* Sin autenticación ni cifrado TLS.
 
 ### 3.2 OTA (`main/core/update.c`)
 * Descarga firmware con `esp_http_client` por HTTP/HTTPS **sin** `cert_pem` ⇒ MITM.
@@ -46,13 +45,18 @@
 * Timeouts configurables, pero no hay reintentos ni validación de tamaño.
 
 ### 3.3 Wi-Fi (`main/core/wifi_manager.c`)
-```20:38:main/core/wifi_manager.c
-.ssid = "Yahel2023",
-.password = "Yahel2023",
+```73:81:main/core/wifi_manager.c
+wifi_credentials_t creds;
+if (wifi_prov_get_credentials(&creds) != ESP_OK) {
+    ESP_LOGW(TAG, "Sin credenciales en NVS; iniciando provisioning BLE");
+    wifi_prov_start_ble_provisioning();
+    strcpy(creds.ssid, "DemoSSID");
+    strcpy(creds.password, "password");
+}
 ```
-* Credenciales hard-coded crítico.
-* Función monolítica (~80 líneas) inicializa Wi-Fi, escanea redes y sincroniza tiempo.
-* No hay evento de reconexión automática.
+* Credenciales hard-coded como respaldo.
+* Función monolítica (~120 líneas) inicializa Wi-Fi, escaneo y SNTP.
+* Reintentos y mDNS activan `ws_server_start`.
 
 ### 3.4 PID (`main/core/pid_controller.c`)
 * Controlador incremental con salida PWM SSR.
@@ -84,11 +88,12 @@
 
 | Riesgo | Evidencia | Impacto |
 |--------|-----------|---------|
-| **Credenciales en código** | 20:38 `wifi_manager.c` | Acceso no autorizado a red.
+| **Credenciales en código** | 73:81 `wifi_manager.c` | Acceso no autorizado a red.
 | **OTA sin TLS** | 197:204 `update.c` | Inyección de firmware malicioso.
 | **Sin verificación de firma** | update.c | Compromiso de dispositivo.
 | **Logs verbosos en producción** | múltiples `ESP_LOGI` | Revelación de información.
 | **Bluetooth nombre editable sin autenticación** | UI | Spoofing de dispositivo.
+| **WebSocket sin autenticación** | `ws_server.c` | Control remoto no autorizado.
 
 Mitigaciones: usar `esp_https_ota`, implementar aprovisionamiento, desactivar logs, BLE pairing seguro, quemar EFUSE secure boot + flash encryption.
 
@@ -130,7 +135,7 @@ Recomendación: habilitar watchdog, umbrales de sobretemperatura con corte HW, d
 |---------|-------------|
 | Heap PSRAM | LVGL buffers ~320 KB, OK con PSRAM habilitada.
 | CPU | Tareas: PID(5), Temp(5), LVGL(core-pinned, prio 4) – riesgo de _starvation_ mínima.
-| Persistencia NVS | Uso de namespaces `pid_params`, `bootloader_stats`, `statistics`; sin GC.
+| Persistencia NVS | Uso de namespaces `pid_params` y `statistics`; sin GC.
 
 ---
 
@@ -138,7 +143,7 @@ Recomendación: habilitar watchdog, umbrales de sobretemperatura con corte HW, d
 
 | Categoría | ✔ Listo | ⚠ Parcial | ❌ Pendiente |
 |-----------|---------|-----------|--------------|
-| Bootloader integridad | ✔ | | |
+| Integridad de arranque (bootloader IDF) | ✔ | | |
 | Secure Boot + Encrypted Flash | | | ❌ |
 | OTA TLS + firma | | | ❌ |
 | Credentials provisioning | | | ❌ |
@@ -179,7 +184,7 @@ Recomendación: habilitar watchdog, umbrales de sobretemperatura con corte HW, d
 
 ## 10. Conclusión
 
-El proyecto presenta una **base sólida** — bootloader seguro, PID con autotuning, arquitectura modular — pero **no satisface** los requisitos industriales de ciberseguridad y seguridad funcional en su estado actual:
+El proyecto presenta una **base sólida** — arquitectura modular y PID con autotuning — pero **no satisface** los requisitos industriales de ciberseguridad y seguridad funcional en su estado actual:
 
 * OTA vulnerable a MITM.
 * Credenciales expuestas.
